@@ -83,10 +83,11 @@ function drawDraftBar() {
   const d = readDraft();
   if (USING_DRAFT && d.publishedAt && d.publishedAt >= d.savedAt) { bar.innerHTML = `<div class="draftbar" style="background:#167a5a">✓ نُشرت تعديلاتك، وتظهر لكل الزوار خلال دقيقة أو دقيقتين<a href="#editor">العودة للمحرّر</a></div>`; return; }
   bar.innerHTML = USING_DRAFT
-    ? `<div class="draftbar">تشاهد نسختك المعدّلة من المحرّر (تظهر في متصفحك فقط)<a href="#" data-viewpub="1">عرض النسخة المنشورة</a><a href="#editor">العودة للمحرّر</a></div>`
+    ? `<div class="draftbar">عندك تعديلات لم تُنشر بعد، ولا يراها غيرك<button type="button" class="db-pub" data-publish>☁ نشر للجميع</button><a href="#editor">المحرّر</a><a href="#" data-viewpub="1">عرض النسخة المنشورة</a></div>`
     : `<div class="draftbar">تشاهد النسخة المنشورة<a href="#" data-viewpub="0">عرض مسودتي</a></div>`;
 }
 document.addEventListener('click', e => {
+  if (e.target.closest('[data-publish]') && window.TEditor) { e.preventDefault(); window.TEditor.publishQuiet(); return; }
   const a = e.target.closest('[data-viewpub]');
   if (!a) return;
   e.preventDefault();
@@ -825,8 +826,9 @@ function route() {
   const parts = raw.split('/').map(x => { try { return decodeURIComponent(x); } catch (e) { return x; } });
   const name = parts[0] || 'home';
   closePop();
-  if (name === 'editor' || name === 'try') {
-    if (window.TEditor) window.TEditor.open(name === 'try');
+  if (name === 'try') { location.replace('#editor'); return; }  // the old trial link now opens the real editor
+  if (name === 'editor') {
+    if (window.TEditor) window.TEditor.open();
     return;
   }
   if (window.TEditor && window.TEditor.isOpen()) { window.TEditor.close(); loadData(); }

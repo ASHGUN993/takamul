@@ -1,4 +1,4 @@
-/* تكامل — المحرّر المرئي (#editor) والوضع التجريبي (#try).
+/* تكامل — المحرّر المرئي (#editor).
    يحفظ المسودة في المتصفح، والصور والتجارب في IndexedDB، ويُصدِّر ملف zip فيه content.js والملفات الجديدة. */
 (function () {
 'use strict';
@@ -177,7 +177,7 @@ function build() {
       <button class="btn btn-g" data-act="export" title="تنزيل المحتوى والملفات في ملف zip">⤓ zip</button>
       <button class="btn btn-o" data-act="publish">☁ نشر للجميع</button>
     </div>
-    <div class="ed-demo hide"><span>🧪 <b>وضع تجريبي:</b> جرّب إضافة موضوع أو ربط كلمة. تعديلاتك تظهر في متصفحك فقط ولن يراها غيرك.</span><button data-act="reset">إعادة الضبط</button></div>
+    <div class="ed-demo hide" hidden><span>🧪 <b>وضع تجريبي:</b> جرّب إضافة موضوع أو ربط كلمة. تعديلاتك تظهر في متصفحك فقط ولن يراها غيرك.</span><button data-act="reset">إعادة الضبط</button></div>
     <div class="ed-body"><div class="ed-col ed-tree"></div><div class="ed-col ed-form"></div><div class="ed-col ed-prev"></div></div>`;
   document.body.appendChild(root);
   root.addEventListener('click', e => {
@@ -832,11 +832,28 @@ function syncDraft() {
   return d;
 }
 function markCanEdit(isDemo) {
-  try { const cur = localStorage.getItem('takamul.canEdit'); if (!(isDemo && cur === 'owner')) localStorage.setItem('takamul.canEdit', isDemo ? 'demo' : 'owner'); } catch (e) {}
+  try { localStorage.setItem('takamul.canEdit', 'owner'); } catch (e) {}
 }
 window.TEditor = {
   syncDraft() { syncDraft(); T.useData(D); return D; },
   publish() { const d = T.readDraft(); if (d) { D = d.data; T.useData(D); } else if (!D) D = T.data; publishDialog(); },
+  /* publish without the dialog when the account is already connected */
+  async publishQuiet() {
+    const cfg = ghCfg();
+    const d = T.readDraft();
+    if (d) { D = d.data; T.useData(D); } else if (!D) D = T.data;
+    if (!cfg || !cfg.token) { publishDialog(); return false; }
+    toast('جارٍ النشر للجميع…');
+    try {
+      const r = await publishNow(cfg, () => {}, names => Promise.resolve(confirm(`محرر آخر عدّل أيضًا: ${names.join('، ')}.\nإن تابعت تُعتمد نسختك في هذه المواضع فقط، وتبقى بقية تعديلاته كما هي. متابعة؟`)));
+      if (!r) { toast('أُلغي النشر'); return false; }
+      setStatus('نُشرت التعديلات ✓');
+      if (root && open) { drawTree(); drawForm(); drawPreview(); }
+      else { T.loadData(); T.route(); }
+      toast('✓ نُشر للجميع، ويظهر خلال دقيقة أو دقيقتين');
+      return true;
+    } catch (e) { toast(e.message || 'تعذّر النشر'); if (e.status === 401) { try { localStorage.removeItem(GH_KEY); } catch (err) {} } return false; }
+  },
   dialogs: {
     link(L, word, apply) { D = T.data; linkDialog(null, L, { word, apply }); },
     media(kind, existing, hooks) { mediaDialog(null, kind, existing, hooks); },
@@ -847,7 +864,7 @@ window.TEditor = {
   isOpen: () => open,
   async open(isDemo) {
     if (!root) { build(); $('.ed-tree', root).addEventListener('click', treeClick); }
-    demo = !!isDemo;
+    demo = false;
     markCanEdit(isDemo);
     const d = syncDraft();
     T.useData(D);
@@ -856,7 +873,7 @@ window.TEditor = {
     $('[data-act=publish]', root).classList.toggle('hide', demo);
     root.classList.remove('hide'); open = true;
     document.body.style.overflow = 'hidden';
-    document.title = (demo ? 'جرّب المحرّر' : 'المحرّر') + ' — تكامل';
+    document.title = 'المحرّر — تكامل';
     setStatus(d ? 'مسودة محفوظة في هذا المتصفح' : 'النسخة المنشورة');
     if (!sel || (sel.type === 'lesson' && !findLesson(sel.id))) {
       const first = D.site.featured && findLesson(D.site.featured) ? D.site.featured : (D.lessons[0] || {}).id;

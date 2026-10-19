@@ -131,7 +131,7 @@ function applyFig(fig, o) {
 }
 
 /* ---------- session ---------- */
-function bar(demo) {
+function bar() {
   const b = document.createElement('div');
   b.className = 'ie-bar';
   b.innerHTML = `
@@ -140,11 +140,12 @@ function bar(demo) {
     <span class="sep"></span>
     <button type="button" data-cmd="link">🔗 ربط كلمة</button><button type="button" data-cmd="img">🖼 صورة</button><button type="button" data-cmd="video">🎬 فيديو</button><button type="button" data-cmd="lab">🧪 تجربة</button>
     <span class="st">وضع التعديل</span>
-    ${demo ? '<span class="demo">تجريبي: يظهر لك فقط</span>' : '<button type="button" class="pub" data-cmd="publish">☁ نشر للجميع</button>'}
-    <button type="button" class="done" data-cmd="done">✓ تم</button>`;
+    <button type="button" class="pub" data-cmd="publish">☁ نشر للجميع</button>
+    <button type="button" class="done" data-cmd="done" title="${connected() ? 'يحفظ وينشر للجميع' : 'يحفظ تعديلاتك'}">✓ ${connected() ? 'تم ونشر' : 'تم'}</button>`;
   return b;
 }
 function canEdit() { try { return localStorage.getItem('takamul.canEdit'); } catch (e) { return null; } }
+function connected() { try { const c = JSON.parse(localStorage.getItem('takamul.gh.v1') || 'null'); return !!(c && c.token); } catch (e) { return false; } }
 
 function start(id) {
   if (!E()) return;
@@ -166,8 +167,7 @@ function start(id) {
   [h1, sub, prose].forEach(x => { x.contentEditable = 'true'; x.spellcheck = false; });
   try { document.execCommand('defaultParagraphSeparator', false, 'p'); } catch (e) {}
   $$('figure.media, section.lab', prose).forEach(decorate);
-  const demo = canEdit() === 'demo';
-  const b = bar(demo);
+  const b = bar();
   art.parentNode.insertBefore(b, art);
   art.classList.add('ie-on');
   document.body.classList.add('inline-editing');
@@ -238,7 +238,11 @@ function insertEl(el) {
 function cmd(c) {
   if (!A) return;
   const ed = E();
-  if (c === 'done') { stop(); T.loadData(); T.route(); ed.toast('حُفظت تعديلاتك'); return; }
+  if (c === 'done') {
+    stop(); T.loadData(); T.route();
+    if (connected()) ed.publishQuiet(); else ed.toast('حُفظت تعديلاتك. اضغط «نشر للجميع» لتظهر لكل الزوار.');
+    return;
+  }
   if (c === 'publish') { save(); ed.publish(); return; }
   if (['h2', 'h3', 'p', 'bold', 'list'].includes(c)) {
     if (!restoreRange()) A.prose.focus();

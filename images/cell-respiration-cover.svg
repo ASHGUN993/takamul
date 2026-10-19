@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 360">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#E9FBF4"/><stop offset="1" stop-color="#EAF3FF"/></linearGradient>
+    <linearGradient id="mem" x1="0" x2="1"><stop offset="0" stop-color="#20B486"/><stop offset="1" stop-color="#2F80ED"/></linearGradient>
+  </defs>
+  <rect width="800" height="360" fill="url(#bg)"/>
+  <circle cx="90" cy="70" r="46" fill="#FFE1BC" opacity=".7"/>
+  <circle cx="720" cy="300" r="60" fill="#D7F3FF" opacity=".8"/>
+  <circle cx="680" cy="70" r="10" fill="#F48C06" opacity=".7"/>
+  <ellipse cx="400" cy="182" rx="300" ry="122" fill="#fff" stroke="url(#mem)" stroke-width="10"/>
+  <ellipse cx="400" cy="182" rx="276" ry="100" fill="#F2FBF7"/>
+  <path d="M140 182 C175 90,205 270,240 182 S305 90,340 182 S405 270,440 182 S505 90,540 182 S605 270,640 182 S668 120,662 182" fill="none" stroke="#20B486" stroke-width="9" stroke-linecap="round" opacity=".55"/>
+  <g font-family="sans-serif" font-weight="700" font-size="13" fill="#fff" text-anchor="middle">
+    <circle cx="205" cy="118" r="20" fill="#F48C06"/><text x="205" y="123">ATP</text>
+    <circle cx="372" cy="250" r="20" fill="#F48C06"/><text x="372" y="255">ATP</text>
+    <circle cx="560" cy="112" r="20" fill="#F48C06"/><text x="560" y="117">ATP</text>
+    <circle cx="610" cy="242" r="16" fill="#8E5CF0"/><text x="610" y="247" font-size="10">CO₂</text>
+    <circle cx="300" cy="120" r="16" fill="#2F80ED"/><text x="300" y="125" font-size="11">O₂</text>
+  </g>
+</svg>

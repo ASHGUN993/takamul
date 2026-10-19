@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 150" font-family="Readex Pro, Tahoma, sans-serif">
+  <g text-anchor="middle">
+    <rect x="690" y="36" width="160" height="78" rx="18" fill="#E4F7F0"/>
+    <text x="770" y="70" font-size="21" font-weight="600" fill="#20B486">جلوكوز</text>
+    <text x="770" y="97" font-size="15" fill="#20B486">C₆H₁₂O₆</text>
+    <text x="668" y="84" font-size="30" fill="#696984">+</text>
+    <rect x="500" y="36" width="146" height="78" rx="18" fill="#EAF3FF"/>
+    <text x="573" y="70" font-size="21" font-weight="600" fill="#2F80ED">أكسجين</text>
+    <text x="573" y="97" font-size="15" fill="#2F80ED">6O₂</text>
+    <path d="M482 75 H418 M434 62 L418 75 L434 88" fill="none" stroke="#F48C06" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="196" y="36" width="204" height="78" rx="18" fill="#F3EEFF"/>
+    <text x="298" y="64" font-size="15.5" font-weight="600" fill="#8E5CF0">ثاني أكسيد الكربون + ماء</text>
+    <text x="298" y="97" font-size="15" fill="#8E5CF0">6CO₂ + 6H₂O</text>
+    <text x="174" y="84" font-size="30" fill="#696984">+</text>
+    <rect x="12" y="36" width="140" height="78" rx="18" fill="#F48C06"/>
+    <text x="82" y="70" font-size="21" font-weight="700" fill="#fff">طاقة</text>
+    <text x="82" y="97" font-size="15" fill="#fff">(ATP)</text>
+  </g>
+</svg>

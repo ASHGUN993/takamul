@@ -43,6 +43,8 @@ const CSS = `
 .trow.l3{padding-inline-start:38px;color:#4a4a66}
 .trow.l4{padding-inline-start:56px;color:var(--muted)}
 .trow.l4.empty .nm{opacity:.6}
+.trow.addrow{color:var(--orange);font-weight:500;font-size:13px}
+.trow.addrow:hover{background:#FFF4E5}
 .trow .sw{width:10px;height:10px;border-radius:50%;flex:none}
 .ed-form{padding:20px 22px 60px}
 .ed-form h2{font-size:18px;color:var(--navy);margin-bottom:4px}
@@ -71,7 +73,7 @@ const CSS = `
 .ed-prev{background:var(--bg);padding:20px;border-inline-start:1px solid var(--line)}
 .ed-prev .pvh{font-size:12px;color:var(--muted);margin-bottom:10px;display:flex;justify-content:space-between}
 .ed-prev .lesson{box-shadow:0 6px 24px rgba(47,50,125,.08)}
-.ed-prev .pager{display:none}
+.ed-prev .lfoot{display:none}
 .ed-empty{display:grid;place-items:center;height:100%;color:var(--muted);text-align:center;padding:30px}
 .ed-dlg .box{width:min(560px,100%)}
 .dlg-b{padding:4px 20px 20px}
@@ -97,6 +99,8 @@ const CSS = `
 @media (max-width:1100px){.ed-body{grid-template-columns:260px 1fr}.ed-prev{display:none}.ed-body.pv .ed-prev{display:block;grid-column:2}.ed-body.pv .ed-form{display:none}}
 @media (max-width:700px){.ed-body{grid-template-columns:1fr}.ed-tree{max-height:34vh;border-bottom:1px solid var(--line)}.ed-body.pv .ed-prev{grid-column:1}.ed-top .st{display:none}.row3,.row2{grid-template-columns:1fr}}
 `;
+
+(() => { const st = document.createElement('style'); st.textContent = CSS; document.head.appendChild(st); })();
 
 /* ---------- helpers ---------- */
 function toast(msg) { const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; document.body.appendChild(t); setTimeout(() => t.remove(), 2400); }
@@ -157,11 +161,10 @@ function changed(opts = {}) {
   clearTimeout(pvTimer);
   pvTimer = setTimeout(drawPreview, opts.now ? 0 : 220);
 }
-function setStatus(t) { const s = $('.st', root); if (s) s.textContent = t; }
+function setStatus(t) { if (!root) return; const s = $('.st', root); if (s) s.textContent = t; }
 
 /* ---------- layout ---------- */
 function build() {
-  const st = document.createElement('style'); st.textContent = CSS; document.head.appendChild(st);
   root = document.createElement('div');
   root.className = 'ed hide';
   root.innerHTML = `<div class="ed-top">
@@ -174,7 +177,7 @@ function build() {
       <button class="btn btn-g" data-act="export" title="تنزيل المحتوى والملفات في ملف zip">⤓ zip</button>
       <button class="btn btn-o" data-act="publish">☁ نشر للجميع</button>
     </div>
-    <div class="ed-demo hide"><span>🧪 <b>وضع تجريبي:</b> جرّب إضافة درس أو ربط كلمة. تعديلاتك تظهر في متصفحك فقط ولن يراها غيرك.</span><button data-act="reset">إعادة الضبط</button></div>
+    <div class="ed-demo hide"><span>🧪 <b>وضع تجريبي:</b> جرّب إضافة موضوع أو ربط كلمة. تعديلاتك تظهر في متصفحك فقط ولن يراها غيرك.</span><button data-act="reset">إعادة الضبط</button></div>
     <div class="ed-body"><div class="ed-col ed-tree"></div><div class="ed-col ed-form"></div><div class="ed-col ed-prev"></div></div>`;
   document.body.appendChild(root);
   root.addEventListener('click', e => {
@@ -193,6 +196,7 @@ function build() {
 }
 
 /* ---------- tree ---------- */
+const addRow = (type, id, lvl, label) => `<div class="trow addrow ${lvl}" data-op="add" data-type="${type}" data-id="${esc(id)}"><span class="car"></span><span class="nm">${label}</span></div>`;
 function drawTree() {
   const el = $('.ed-tree', root);
   const isOn = (type, id) => sel && sel.type === type && sel.id === id ? ' on' : '';
@@ -200,7 +204,7 @@ function drawTree() {
   let h = `<button class="add-subj" data-op="add-subj">＋ مادة جديدة</button>`;
   D.subjects.forEach(s => {
     const ex = expanded.has(s.id);
-    h += `<div class="trow l1${isOn('subject', s.id)}" data-type="subject" data-id="${esc(s.id)}"><span class="car">${ex ? '▾' : '‹'}</span><span class="sw" style="background:${esc(s.color)}"></span><span class="nm">${esc(s.name)}</span>${acts('subject', s.id, 'إضافة موضوع')}</div>`;
+    h += `<div class="trow l1${isOn('subject', s.id)}" data-type="subject" data-id="${esc(s.id)}"><span class="car">${ex ? '▾' : '‹'}</span><span class="sw" style="background:${esc(s.color)}"></span><span class="nm">${esc(s.name)}</span>${acts('subject', s.id, 'إضافة وحدة')}</div>`;
     if (!ex) return;
     s.topics.forEach(t => {
       const et = expanded.has(t.id);
@@ -208,14 +212,17 @@ function drawTree() {
       if (!et) return;
       t.branches.forEach(b => {
         const eb = expanded.has(b.id);
-        h += `<div class="trow l3${isOn('branch', b.id)}" data-type="branch" data-id="${esc(b.id)}"><span class="car">${eb ? '▾' : '‹'}</span><span class="nm">${esc(b.name)}</span>${acts('branch', b.id, 'إضافة درس')}</div>`;
+        h += `<div class="trow l3${isOn('branch', b.id)}" data-type="branch" data-id="${esc(b.id)}"><span class="car">${eb ? '▾' : '‹'}</span><span class="nm">${esc(b.name)}</span>${acts('branch', b.id, 'إضافة موضوع')}</div>`;
         if (!eb) return;
         b.lessons.forEach(id => {
           const l = findLesson(id); if (!l) return;
           h += `<div class="trow l4${isOn('lesson', id)}${T.hasBody(l) ? '' : ' empty'}" data-type="lesson" data-id="${esc(id)}"><span class="car">•</span><span class="nm">${esc(l.title)}</span>${acts('lesson', id)}</div>`;
         });
+        h += addRow('branch', b.id, 'l4', '＋ موضوع جديد');
       });
+      h += addRow('topic', t.id, 'l3', '＋ فرع جديد');
     });
+    h += addRow('subject', s.id, 'l2', '＋ وحدة جديدة');
   });
   el.innerHTML = h;
 }
@@ -233,27 +240,32 @@ async function treeClick(e) {
     if (type !== 'lesson') { if (expanded.has(id) && sel && sel.id === id) expanded.delete(id); else expanded.add(id); }
     select(type, id); drawTree(); return;
   }
+  if (op === 'add') return addChild(type, id);
   if (type === 'subject') {
     const i = D.subjects.findIndex(s => s.id === id), s = D.subjects[i];
     if (op === 'up' || op === 'down') move(D.subjects, i, op === 'up' ? -1 : 1);
     if (op === 'del') { if (!confirm(`حذف مادة «${s.name}» وكل دروسها؟`)) return; dropLessons(s.topics.flatMap(t => t.branches.flatMap(b => b.lessons))); D.subjects.splice(i, 1); sel = null; }
-    if (op === 'add') { const n = await askText('موضوع جديد', '', `في مادة ${s.name}`); if (!n) return; const t = { id: uid('t'), name: n, branches: [] }; s.topics.push(t); expanded.add(s.id); expanded.add(t.id); select('topic', t.id); }
   } else if (type === 'topic') {
     const { s, t } = findTopic(id), i = s.topics.indexOf(t);
     if (op === 'up' || op === 'down') move(s.topics, i, op === 'up' ? -1 : 1);
-    if (op === 'del') { if (!confirm(`حذف موضوع «${t.name}» وكل دروسه؟`)) return; dropLessons(t.branches.flatMap(b => b.lessons)); s.topics.splice(i, 1); sel = null; }
-    if (op === 'add') { const n = await askText('فرع جديد', '', `في موضوع ${t.name}`); if (!n) return; const b = { id: uid('b'), name: n, lessons: [] }; t.branches.push(b); expanded.add(t.id); expanded.add(b.id); select('branch', b.id); }
+    if (op === 'del') { if (!confirm(`حذف وحدة «${t.name}» وكل مواضيعها؟`)) return; dropLessons(t.branches.flatMap(b => b.lessons)); s.topics.splice(i, 1); sel = null; }
   } else if (type === 'branch') {
     const { t, b } = findBranch(id), i = t.branches.indexOf(b);
     if (op === 'up' || op === 'down') move(t.branches, i, op === 'up' ? -1 : 1);
     if (op === 'del') { if (!confirm(`حذف فرع «${b.name}» ودروسه؟`)) return; dropLessons(b.lessons); t.branches.splice(i, 1); sel = null; }
-    if (op === 'add') { const n = await askText('درس جديد', '', `في فرع ${b.name}`); if (!n) return; const l = { id: uid('l'), title: n, body: '', updated: today() }; D.lessons.push(l); b.lessons.push(l.id); expanded.add(b.id); select('lesson', l.id); }
   } else if (type === 'lesson') {
     const pl = lessonPlace(id); const i = pl.b.lessons.indexOf(id);
     if (op === 'up' || op === 'down') move(pl.b.lessons, i, op === 'up' ? -1 : 1);
-    if (op === 'del') { const l = findLesson(id); if (!confirm(`حذف درس «${l.title}»؟`)) return; pl.b.lessons.splice(i, 1); dropLessons([id]); sel = null; }
+    if (op === 'del') { const l = findLesson(id); if (!confirm(`حذف موضوع «${l.title}»؟`)) return; pl.b.lessons.splice(i, 1); dropLessons([id]); sel = null; }
   }
   if (!sel) drawForm();
+  changed({ tree: true, now: true });
+}
+
+async function addChild(type, id) {
+  if (type === 'subject') { const s = findSubj(id); const n = await askText('وحدة جديدة', '', `في مادة ${s.name}`); if (!n) return; const t = { id: uid('t'), name: n, branches: [] }; s.topics.push(t); expanded.add(s.id); expanded.add(t.id); select('topic', t.id); }
+  else if (type === 'topic') { const { t } = findTopic(id); const n = await askText('فرع جديد', '', `في وحدة ${t.name}`); if (!n) return; const b = { id: uid('b'), name: n, lessons: [] }; t.branches.push(b); expanded.add(t.id); expanded.add(b.id); select('branch', b.id); }
+  else if (type === 'branch') { const { b } = findBranch(id); const n = await askText('موضوع جديد', '', `في فرع ${b.name}`); if (!n) return; const l = { id: uid('l'), title: n, body: '', updated: today() }; D.lessons.push(l); b.lessons.push(l.id); expanded.add(b.id); select('lesson', l.id); }
   changed({ tree: true, now: true });
 }
 
@@ -267,42 +279,48 @@ function select(type, id) {
 }
 function drawForm() {
   const el = $('.ed-form', root);
-  if (!sel) { el.innerHTML = `<div class="ed-empty"><div><b style="color:var(--navy);font-size:17px">اختر عنصرًا من الشجرة</b><p>مادة أو موضوع أو فرع أو درس.<br>أو اضغط «＋» بجانب الفرع لإضافة درس جديد.</p></div></div>`; return; }
+  if (!sel) { el.innerHTML = `<div class="ed-empty"><div><b style="color:var(--navy);font-size:17px">اختر عنصرًا من الشجرة</b><p>مادة أو وحدة أو فرع أو موضوع.<br>أو اضغط «＋» بجانب الفرع لإضافة موضوع جديد.</p></div></div>`; return; }
   if (sel.type === 'subject') {
     const s = findSubj(sel.id);
     el.innerHTML = `<h2>إعدادات المادة</h2><p class="hint">الاسم واللون يظهران في التبويبات والشجرة ووسوم المواد المرتبطة.</p>
       <div class="fld"><label>اسم المادة</label><input type="text" data-f="name" value="${esc(s.name)}"></div>
       <div class="row3"><div class="fld"><label>الأيقونة</label><select data-f="icon">${[['bio', 'أحياء'], ['chem', 'كيمياء'], ['phys', 'فيزياء'], ['math', 'رياضيات'], ['ar', 'عربي (ض)'], ['en', 'إنجليزي (Aa)'], ['earth', 'علوم الأرض'], ['book', 'كتاب']].map(([v, n]) => `<option value="${v}"${s.icon === v ? ' selected' : ''}>${n}</option>`).join('')}</select></div>
       <div class="fld"><label>اللون</label><input type="color" data-f="color" value="${esc(s.color)}" style="width:100%;height:40px;border:1px solid #E1E2EC;border-radius:12px;padding:3px"></div>
-      <div class="fld"><label>اتجاه الدروس</label><select data-f="dir"><option value="">من اليمين (عربي)</option><option value="ltr"${s.dir === 'ltr' ? ' selected' : ''}>من اليسار (English)</option></select></div></div>`;
+      <div class="fld"><label>اتجاه المواضيع</label><select data-f="dir"><option value="">من اليمين (عربي)</option><option value="ltr"${s.dir === 'ltr' ? ' selected' : ''}>من اليسار (English)</option></select></div></div>
+      <button class="sbtn o" data-addchild>＋ إضافة وحدة لهذه المادة</button>`;
+    $('[data-addchild]', el).onclick = () => addChild('subject', s.id);
     $$('[data-f]', el).forEach(i => i.oninput = () => { s[i.dataset.f] = i.value || undefined; if (!s.dir) delete s.dir; changed({ tree: true }); });
     return;
   }
   if (sel.type === 'topic' || sel.type === 'branch') {
     const o = sel.type === 'topic' ? findTopic(sel.id).t : findBranch(sel.id).b;
-    el.innerHTML = `<h2>${sel.type === 'topic' ? 'موضوع' : 'فرع'}</h2><p class="hint">${sel.type === 'topic' ? 'استخدم «＋» بجانبه في الشجرة لإضافة فرع.' : 'استخدم «＋» بجانبه في الشجرة لإضافة درس.'}</p>
-      <div class="fld"><label>الاسم</label><input type="text" data-f="name" value="${esc(o.name)}"></div>`;
+    const kids = sel.type === 'topic' ? o.branches.map(b => b.name) : o.lessons.map(id => (findLesson(id) || {}).title).filter(Boolean);
+    el.innerHTML = `<h2>${sel.type === 'topic' ? 'وحدة' : 'فرع'}</h2><p class="hint">${sel.type === 'topic' ? 'الوحدة تضم فروعًا، وكل فرع يضم مواضيع.' : 'الفرع يضم دروسًا.'}</p>
+      <div class="fld"><label>الاسم</label><input type="text" data-f="name" value="${esc(o.name)}"></div>
+      <div class="fld"><label>${sel.type === 'topic' ? 'الفروع' : 'المواضيع'} (${kids.length})</label><div style="font-size:13.5px;color:#4a4a66;line-height:2">${kids.length ? kids.map(esc).join(' · ') : '<span style="color:var(--muted)">لا يوجد بعد</span>'}</div></div>
+      <button class="sbtn o" data-addchild>＋ إضافة ${sel.type === 'topic' ? 'فرع' : 'موضوع'}</button>`;
+    $('[data-addchild]', el).onclick = () => addChild(sel.type, o.id);
     $('[data-f]', el).oninput = e => { o.name = e.target.value; changed({ tree: true }); };
     return;
   }
   const L = findLesson(sel.id); if (!L) { sel = null; drawForm(); return; }
   const pl = lessonPlace(L.id);
   el.innerHTML = `<h2>${esc(L.title)}</h2><p class="hint">${esc(pl ? `${pl.s.name} › ${pl.t.name} › ${pl.b.name}` : '')} · الرابط: <span dir="ltr">#lesson/${esc(L.id)}</span></p>
-    <div class="fld"><label>عنوان الدرس</label><input type="text" data-f="title" value="${esc(L.title)}"></div>
-    <div class="fld"><label>العنوان الفرعي <small>سطر يشرح السؤال الذي يجيب عنه الدرس</small></label><input type="text" data-f="subtitle" value="${esc(L.subtitle || '')}"></div>
+    <div class="fld"><label>عنوان الموضوع</label><input type="text" data-f="title" value="${esc(L.title)}"></div>
+    <div class="fld"><label>العنوان الفرعي <small>سطر يشرح السؤال الذي يجيب عنه الموضوع</small></label><input type="text" data-f="subtitle" value="${esc(L.subtitle || '')}"></div>
     <div class="row2"><div class="fld"><label>رمز المنهاج <small>اختياري</small></label><input type="text" data-f="code" dir="ltr" placeholder="G10-S2-U4-L3" value="${esc(L.code || '')}"></div>
       <div class="fld"><label>مدة القراءة <small>بالدقائق</small></label><input type="number" min="1" data-f="minutes" value="${esc(L.minutes || '')}"></div></div>
     <div class="fld"><label>صورة الغلاف</label><div class="cover-f"><span class="cv" style="background-image:${L.cover ? `url('${esc(T.fileUrl(L.cover))}')` : 'none'}"></span><button class="sbtn" data-do="cover">رفع صورة</button>${L.cover ? '<button class="sbtn d" data-do="nocover">إزالة</button>' : ''}</div></div>
     <div class="fld"><label>النبذة <small>يعرضها المساعد عند السؤال عن الموضوع</small></label><textarea rows="3" data-f="summary">${esc(L.summary || '')}</textarea></div>
-    <div class="fld"><label>كلمات مفتاحية <small>مفصولة بفاصلة، تساعد المساعد على إيجاد الدرس</small></label><input type="text" data-f="keywords" value="${esc((L.keywords || []).join('، '))}"></div>
+    <div class="fld"><label>كلمات مفتاحية <small>مفصولة بفاصلة، تساعد المساعد على إيجاد الموضوع</small></label><input type="text" data-f="keywords" value="${esc((L.keywords || []).join('، '))}"></div>
     <div class="fld"><label>أسئلة شائعة <small>سؤال في كل سطر، بصياغة الطالب</small></label><textarea rows="3" data-f="faq">${esc((L.faq || []).join('\n'))}</textarea></div>
-    <div class="fld"><label>نص الدرس</label>
+    <div class="fld"><label>نص الموضوع</label>
       <div class="tb">
         <button data-do="h2" title="عنوان قسم">عنوان</button><button data-do="h3">عنوان فرعي</button><button data-do="bold"><b>غامق</b></button><button data-do="list">• قائمة</button>
         <span class="sep"></span><button class="hl" data-do="link">🔗 ربط كلمة</button><button data-do="img">🖼 صورة</button><button data-do="video">🎬 فيديو</button><button data-do="lab">🧪 تجربة</button>
       </div>
-      <textarea class="body" data-f="body" dir="${pl && pl.s.dir === 'ltr' ? 'ltr' : 'rtl'}" placeholder="اكتب نص الدرس هنا…&#10;&#10;## عنوان قسم&#10;فقرة فيها [[كلمة مرتبطة|درس:معرّف_الدرس]]">${esc(L.body || '')}</textarea></div>
-    <label class="chk"><input type="checkbox" data-feat${D.site.featured === L.id ? ' checked' : ''}> درس مميز في الصفحة الرئيسية</label>`;
+      <textarea class="body" data-f="body" dir="${pl && pl.s.dir === 'ltr' ? 'ltr' : 'rtl'}" placeholder="اكتب نص الموضوع هنا…&#10;&#10;## عنوان قسم&#10;فقرة فيها [[كلمة مرتبطة|موضوع:معرّف_الموضوع]]">${esc(L.body || '')}</textarea></div>
+    <label class="chk"><input type="checkbox" data-feat${D.site.featured === L.id ? ' checked' : ''}> موضوع مميز في الصفحة الرئيسية</label>`;
   $$('[data-f]', el).forEach(i => i.oninput = () => {
     const f = i.dataset.f;
     if (f === 'keywords') L.keywords = i.value.split(/[،,]/).map(x => x.trim()).filter(Boolean);
@@ -370,7 +388,7 @@ function setLine(ta, idx, text) {
   if (text === null) { lines.splice(idx, 1); if (lines[idx] === '' && lines[idx - 1] === '') lines.splice(idx, 1); } else lines[idx] = text;
   ta.value = lines.join('\n'); ta.dispatchEvent(new Event('input'));
 }
-function mediaDialog(ta, kind, existing) {
+function mediaDialog(ta, kind, existing, hooks) {
   const o = existing ? Object.assign({}, existing.o) : { cap: '', src: '', size: kind === 'video' ? 100 : 60, align: 'c' };
   const isVid = existing ? existing.o.kind !== 'image' : kind === 'video';
   const noun = isVid ? 'الفيديو' : 'الصورة';
@@ -380,12 +398,12 @@ function mediaDialog(ta, kind, existing) {
     ${existing ? '' : `<div data-pane="file"><div class="fld"><label>${isVid ? `ملف الفيديو <small>mp4 أو webm، حتى ${MAX_VIDEO_MB} ميغابايت</small>` : 'الصورة'}</label><button class="sbtn" data-file style="width:100%;padding:10px">اختر ملفًا…</button></div></div>
     <div data-pane="url" class="hide"><div class="fld"><label>الرابط</label><input type="url" dir="ltr" data-url placeholder="https://www.youtube.com/watch?v=…"></div></div>`}
     <div class="fld"><label>الوصف <small>يظهر تحت ${noun} (اختياري)</small></label><input type="text" data-cap value="${esc(o.cap)}"></div>
-    <div class="fld"><label>الحجم <small>نسبة من عرض الدرس</small> · <b data-sv style="color:var(--orange)">${o.size}%</b></label>
+    <div class="fld"><label>الحجم <small>نسبة من عرض الصفحة</small> · <b data-sv style="color:var(--orange)">${o.size}%</b></label>
       <input type="range" min="20" max="100" step="5" value="${o.size}" data-size style="width:100%;accent-color:#F48C06">
       <div class="dtabs" style="margin:6px 0 0" data-presets><button data-p="33">صغير</button><button data-p="50">متوسط</button><button data-p="75">كبير</button><button data-p="100">كامل العرض</button></div></div>
     <div class="fld"><label>الموضع</label><div class="dtabs" style="margin:0" data-align><button data-a="r">يمين، والنص حولها</button><button data-a="c">في الوسط</button><button data-a="l">يسار، والنص حولها</button></div></div>
     <div class="mprev"><div class="mp-fig"><span>${isVid ? '▶' : '🖼'}</span></div><i></i><i></i><i></i><i></i><i></i><i></i><i style="width:60%"></i></div>
-    <div class="dlg-f">${existing ? '<button class="sbtn d" data-del style="margin-inline-end:auto">حذف من الدرس</button>' : ''}<button class="sbtn" data-x>إلغاء</button><button class="sbtn o" data-ok>${existing ? 'حفظ' : 'إدراج'}</button></div>`, (m, close) => {
+    <div class="dlg-f">${existing ? '<button class="sbtn d" data-del style="margin-inline-end:auto">حذف من الموضوع</button>' : ''}<button class="sbtn" data-x>إلغاء</button><button class="sbtn o" data-ok>${existing ? 'حفظ' : 'إدراج'}</button></div>`, (m, close) => {
     const fig = $('.mp-fig', m);
     const sync = () => {
       $('[data-sv]', m).textContent = o.size + '%';
@@ -410,7 +428,7 @@ function mediaDialog(ta, kind, existing) {
     };
     $('[data-x]', m).onclick = close;
     const del = $('[data-del]', m);
-    if (del) del.onclick = () => { const i = findMediaLine(ta, existing.o.src); if (i >= 0) setLine(ta, i, null); close(); toast(`حُذف ${noun}`); };
+    if (del) del.onclick = () => { if (hooks) hooks.remove(); else { const i = findMediaLine(ta, existing.o.src); if (i >= 0) setLine(ta, i, null); } close(); toast(`حُذف ${noun}`); };
     $('[data-ok]', m).onclick = async () => {
       o.cap = $('[data-cap]', m).value.trim();
       if (!existing) {
@@ -425,25 +443,25 @@ function mediaDialog(ta, kind, existing) {
           o.src = mediaPath(file, isVid ? 'videos' : 'images');
           await storeFile(o.src, file);
         }
-        close(); insertBlock(ta, T.mediaLine(o)); toast(isVid ? 'أُضيف الفيديو' : 'أُضيفت الصورة'); return;
+        close(); if (hooks) hooks.insert(o); else insertBlock(ta, T.mediaLine(o)); toast(isVid ? 'أُضيف الفيديو' : 'أُضيفت الصورة'); return;
       }
-      const i = findMediaLine(ta, existing.o.src);
-      if (i >= 0) setLine(ta, i, T.mediaLine(o));
+      if (hooks) hooks.save(o);
+      else { const i = findMediaLine(ta, existing.o.src); if (i >= 0) setLine(ta, i, T.mediaLine(o)); }
       close(); toast('حُفظت التغييرات');
     };
   });
 }
 
-function linkDialog(ta, L) {
-  const word = ta.value.slice(ta.selectionStart, ta.selectionEnd).trim();
-  const s0 = ta.selectionStart, e0 = ta.selectionEnd;
+function linkDialog(ta, L, hooks) {
+  const word = hooks ? hooks.word : ta.value.slice(ta.selectionStart, ta.selectionEnd).trim();
+  const s0 = ta ? ta.selectionStart : 0, e0 = ta ? ta.selectionEnd : 0;
   const all = [];
   D.subjects.forEach(s => s.topics.forEach(t => t.branches.forEach(b => b.lessons.forEach(id => { const l = findLesson(id); if (l && id !== L.id) all.push({ l, s }); }))));
   let kind = 'lesson', target = '';
   dialog('ربط كلمة', `
     <div class="fld"><label>الكلمة في النص</label><input type="text" data-word value="${esc(word)}" placeholder="مثلًا: ATP"></div>
-    <div class="dtabs"><button data-k="lesson" class="on">درس في الموقع</button><button data-k="video">فيديو</button><button data-k="url">مقالة أو رابط</button><button data-k="lab">تجربة</button></div>
-    <div data-pane="lesson"><input type="text" data-q placeholder="ابحث عن درس…" style="width:100%;border:1px solid #E1E2EC;border-radius:12px;padding:9px 12px"><div class="pick"></div></div>
+    <div class="dtabs"><button data-k="lesson" class="on">موضوع في الموقع</button><button data-k="video">فيديو</button><button data-k="url">مقالة أو رابط</button><button data-k="lab">تجربة</button></div>
+    <div data-pane="lesson"><input type="text" data-q placeholder="ابحث عن موضوع…" style="width:100%;border:1px solid #E1E2EC;border-radius:12px;padding:9px 12px"><div class="pick"></div></div>
     <div data-pane="video" class="hide"><div class="fld"><label>رابط الفيديو <small>يوتيوب أو Vimeo أو ملف mp4</small></label><input type="url" dir="ltr" data-u="video" placeholder="https://www.youtube.com/watch?v=…"></div><button class="sbtn" data-upvid>أو ارفع ملف فيديو (mp4)</button></div>
     <div data-pane="url" class="hide"><div class="fld"><label>رابط المقالة</label><input type="url" dir="ltr" data-u="url" placeholder="https://…"></div></div>
     <div data-pane="lab" class="hide"><div class="pick" data-labs></div><p class="hint" style="margin-top:8px;color:var(--muted);font-size:12.5px">لإضافة تجربة جديدة استخدم زر «🧪 تجربة» في شريط الأدوات.</p></div>
@@ -452,11 +470,11 @@ function linkDialog(ta, L) {
     const drawPick = q => {
       const nq = T.norm(q);
       pick.innerHTML = all.filter(x => !nq || T.norm(x.l.title).includes(nq) || T.norm(x.s.name).includes(nq)).slice(0, 80)
-        .map(x => `<button data-id="${esc(x.l.id)}" class="${target === 'درس:' + x.l.id ? 'on' : ''}"><span class="dot" style="--c:${esc(x.s.color)}"></span>${esc(x.l.title)}<small>${esc(x.s.name)}${T.hasBody(x.l) ? '' : ' · فارغ'}</small></button>`).join('') || '<p style="padding:12px;color:var(--muted)">لا نتائج</p>';
+        .map(x => `<button data-id="${esc(x.l.id)}" class="${target === 'موضوع:' + x.l.id ? 'on' : ''}"><span class="dot" style="--c:${esc(x.s.color)}"></span>${esc(x.l.title)}<small>${esc(x.s.name)}${T.hasBody(x.l) ? '' : ' · فارغ'}</small></button>`).join('') || '<p style="padding:12px;color:var(--muted)">لا نتائج</p>';
     };
     drawPick('');
     $('[data-q]', m).oninput = e => drawPick(e.target.value);
-    pick.onclick = e => { const b = e.target.closest('[data-id]'); if (!b) return; target = 'درس:' + b.dataset.id; $$('button', pick).forEach(x => x.classList.toggle('on', x === b)); };
+    pick.onclick = e => { const b = e.target.closest('[data-id]'); if (!b) return; target = 'موضوع:' + b.dataset.id; $$('button', pick).forEach(x => x.classList.toggle('on', x === b)); };
     const lp = $('[data-labs]', m);
     lp.innerHTML = D.labs.map(x => `<button data-lab="${esc(x.id)}">🧪 ${esc(x.title)}</button>`).join('') || '<p style="padding:12px;color:var(--muted)">لا تجارب بعد</p>';
     lp.onclick = e => { const b = e.target.closest('[data-lab]'); if (!b) return; target = 'تجربة:' + b.dataset.lab; $$('button', lp).forEach(x => x.classList.toggle('on', x === b)); };
@@ -473,16 +491,16 @@ function linkDialog(ta, L) {
       const w = $('[data-word]', m).value.trim().replace(/[\[\]|]/g, '');
       if (kind === 'video' || kind === 'url') target = $(`[data-u=${kind}]`, m).value.trim();
       if (!w) { toast('اكتب الكلمة أولًا'); return; }
-      if (!target) { toast(kind === 'lesson' ? 'اختر درسًا' : kind === 'lab' ? 'اختر تجربة' : 'ضع الرابط'); return; }
+      if (!target) { toast(kind === 'lesson' ? 'اختر موضوعًا' : kind === 'lab' ? 'اختر تجربة' : 'ضع الرابط'); return; }
       close();
-      ta.setSelectionRange(s0, e0);
-      replaceSel(ta, `[[${w}|${target}]]`);
+      if (hooks) hooks.apply(w, target);
+      else { ta.setSelectionRange(s0, e0); replaceSel(ta, `[[${w}|${target}]]`); }
       toast('رُبطت الكلمة');
     };
   });
 }
 
-function labDialog(ta) {
+function labDialog(ta, hooks) {
   dialog('إدراج تجربة', `
     <div class="dtabs"><button data-k="new" class="on">رفع تجربة جديدة</button>${D.labs.length ? '<button data-k="old">تجربة موجودة</button>' : ''}</div>
     <div data-pane="new">
@@ -500,7 +518,7 @@ function labDialog(ta) {
     if (op) op.onclick = e => { const b = e.target.closest('[data-lab]'); if (!b) return; old = b.dataset.lab; $$('button', op).forEach(x => x.classList.toggle('on', x === b)); };
     $('[data-x]', m).onclick = close;
     $('[data-ok]', m).onclick = async () => {
-      if (kind === 'old') { if (!old) { toast('اختر تجربة'); return; } close(); insertBlock(ta, `::lab[${old}]`); return; }
+      if (kind === 'old') { if (!old) { toast('اختر تجربة'); return; } close(); if (hooks) hooks.insert(old); else insertBlock(ta, `::lab[${old}]`); return; }
       if (!file) { toast('اختر ملف التجربة'); return; }
       const title = $('[data-t]', m).value.trim() || 'تجربة تفاعلية', ratio = $('[data-r]', m).value;
       const id = slugFile(file.name).base.replace(/^file$/, 'lab') + '-' + Date.now().toString(36).slice(-4);
@@ -523,17 +541,17 @@ function labDialog(ta) {
           await storeFile(src, new Blob([await file.arrayBuffer()], { type: 'text/html' }));
         }
         D.labs.push(Object.assign({ id, title, src, ratio }, packaged ? { packaged: true } : {}));
-        close(); insertBlock(ta, `::lab[${id}]`); toast('أُضيفت التجربة');
+        close(); if (hooks) hooks.insert(id); else insertBlock(ta, `::lab[${id}]`); toast('أُضيفت التجربة');
       } catch (err) { $('[data-ok]', m).textContent = 'إدراج'; toast(err.message || 'تعذّر رفع التجربة'); }
     };
   });
 }
 
 function showHelp() {
-  dialog('طريقة كتابة الدرس', `<div class="help">
-    <p><code>## عنوان</code> عنوان قسم (يظهر في «في هذا الدرس»)، و<code>### عنوان</code> عنوان فرعي.</p>
+  dialog('طريقة كتابة الموضوع', `<div class="help">
+    <p><code>## عنوان</code> عنوان قسم (يظهر في «في هذا الموضوع»)، و<code>### عنوان</code> عنوان فرعي.</p>
     <p><code>**نص**</code> نص غامق. السطر الذي يبدأ بـ <code>- </code> عنصر في قائمة. سطر فارغ يبدأ فقرة جديدة.</p>
-    <p><code>[[ATP|درس:chem-energy]]</code> كلمة تفتح درسًا من الموقع. إن كان من مادة أخرى تظهر بلون تلك المادة وتُضاف إلى «مرتبط بمواد أخرى».</p>
+    <p><code>[[ATP|موضوع:chem-energy]]</code> كلمة تفتح موضوعًا من الموقع. إن كان من مادة أخرى تظهر بلون تلك المادة وتُضاف إلى «مرتبط بمواد أخرى».</p>
     <p><code>[[فيديو|https://youtube.com/…]]</code> كلمة تفتح فيديو في نافذة. و<code>[[مقالة|https://…]]</code> رابط خارجي.</p>
     <p><code>![وصف](images/صورة.png)</code> صورة في سطر مستقل، و<code>![وصف](images/صورة.png){50% يمين}</code> بنصف العرض على اليمين والنص حولها. الموضع: يمين أو يسار أو وسط.</p>
     <p><code>![وصف](videos/فيديو.mp4)</code> فيديو مرفوع، أو رابط يوتيوب مكان المسار، ويقبل الحجم والموضع نفسيهما.</p>
@@ -547,7 +565,7 @@ function showHelp() {
 /* ---------- preview ---------- */
 function drawPreview() {
   const el = $('.ed-prev', root);
-  if (!sel || sel.type !== 'lesson') { el.innerHTML = `<div class="ed-empty"><div><b style="color:var(--navy)">المعاينة</b><p>اختر درسًا لترى شكله كما سيراه الطالب.</p></div></div>`; return; }
+  if (!sel || sel.type !== 'lesson') { el.innerHTML = `<div class="ed-empty"><div><b style="color:var(--navy)">المعاينة</b><p>اختر موضوعًا لترى شكله كما سيراه الطالب.</p></div></div>`; return; }
   const L = findLesson(sel.id); if (!L) return;
   const sc = el.scrollTop;
   const v = T.lessonView(L);
@@ -577,7 +595,7 @@ async function doExport() {
     zip.file('content.js', contentJs(D));
     const files = await T.idbAll();
     Object.entries(files).forEach(([p, v]) => { if (v && v.blob) zip.file(p, v.blob); });
-    zip.file('اقرأني.txt', 'تحديث موقع «تكامل»\n\n1) فكّ هذا الملف داخل مجلد الموقع (حيث index.html).\n2) وافق على استبدال content.js.\n3) ارفع التغييرات إلى المستودع، فيتحدث الموقع خلال دقيقة.\n\nعدد الدروس: ' + D.lessons.length + '\nالملفات الجديدة: ' + Object.keys(files).length + '\n');
+    zip.file('اقرأني.txt', 'تحديث موقع «تكامل»\n\n1) فكّ هذا الملف داخل مجلد الموقع (حيث index.html).\n2) وافق على استبدال content.js.\n3) ارفع التغييرات إلى المستودع، فيتحدث الموقع خلال دقيقة.\n\nعدد المواضيع: ' + D.lessons.length + '\nالملفات الجديدة: ' + Object.keys(files).length + '\n');
     const blob = await zip.generateAsync({ type: 'blob' });
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `takamul-update-${today()}.zip`;
     document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
@@ -770,7 +788,7 @@ function publishDialog() {
   dialog('نشر للجميع', `
     <p style="font-size:13px;color:var(--muted);margin-bottom:12px">متصل${cfg.login ? ' باسم <b dir="ltr">' + esc(cfg.login) + '</b>' : ''} · <span dir="ltr">${esc(cfg.repo)}</span> · <a href="#" data-logout style="color:var(--red)">قطع الاتصال</a></p>
     <div style="background:var(--bg);border-radius:14px;padding:14px;font-size:13.5px;line-height:1.9;margin-bottom:12px">
-      ${sum.any ? `<b style="color:var(--navy)">ما سيُنشر:</b><br>${sum.ch.length ? `دروس عُدِّلت أو أُضيفت (${sum.ch.length}): ${sum.ch.slice(0, 6).map(esc).join('، ')}${sum.ch.length > 6 ? '…' : ''}<br>` : ''}${sum.del ? `دروس حُذفت: ${sum.del}<br>` : ''}${sum.tree ? 'تغييرات في المواد أو المواضيع أو التجارب<br>' : ''}` : 'لا تعديلات جديدة منذ آخر نشر. يمكنك النشر لرفع أي ملفات متبقية.'}
+      ${sum.any ? `<b style="color:var(--navy)">ما سيُنشر:</b><br>${sum.ch.length ? `مواضيع عُدِّلت أو أُضيفت (${sum.ch.length}): ${sum.ch.slice(0, 6).map(esc).join('، ')}${sum.ch.length > 6 ? '…' : ''}<br>` : ''}${sum.del ? `مواضيع حُذفت: ${sum.del}<br>` : ''}${sum.tree ? 'تغييرات في المواد أو الوحدات أو الفروع أو التجارب<br>' : ''}` : 'لا تعديلات جديدة منذ آخر نشر. يمكنك النشر لرفع أي ملفات متبقية.'}
     </div>
     <p style="font-size:12.5px;color:var(--muted);line-height:1.8">إن نشر محرر آخر في الوقت نفسه تُدمج تعديلاتكما تلقائيًا. يظهر التحديث لكل الزوار خلال دقيقة أو دقيقتين.</p>
     <div data-step style="font-size:13px;color:var(--brand);font-weight:600;min-height:20px;margin-top:8px"></div>
@@ -785,7 +803,8 @@ function publishDialog() {
         if (!r) { go.disabled = false; go.textContent = '☁ انشر الآن'; st.textContent = 'أُلغي النشر.'; return; }
         st.innerHTML = `✓ نُشر. يظهر لكل الزوار خلال دقيقة أو دقيقتين. <a href="${esc(r.url)}" target="_blank" rel="noopener" style="color:var(--navy)">التفاصيل ↗</a>`;
         go.textContent = 'تم'; setStatus('نُشرت التعديلات ✓');
-        drawTree(); drawForm(); drawPreview();
+        if (root && open) { drawTree(); drawForm(); drawPreview(); }
+        if (window.TInline) window.TInline.afterPublish();
       } catch (e) {
         go.disabled = false; go.textContent = '☁ انشر الآن'; st.style.color = 'var(--red)'; st.textContent = e.message;
         if (e.status === 401) { try { localStorage.removeItem(GH_KEY); } catch (err) {} }
@@ -795,25 +814,42 @@ function publishDialog() {
 }
 
 /* ---------- open / close ---------- */
+/* load the draft (or the published content) into D, bringing in what other editors published since it started */
+function syncDraft() {
+  const d = T.readDraft();
+  const pub = T.published();
+  D = d ? JSON.parse(JSON.stringify(d.data)) : pub;
+  D.labs = D.labs || []; D.site = D.site || {}; D.aliases = D.aliases || {};
+  if (!d) writeBase(pub);
+  else {
+    const base = readBase();
+    if (base && !same(base, pub)) {
+      const conf = []; D = merge3(base, D, pub, conf, '');
+      writeBase(pub); T.saveDraft(D);
+      setTimeout(() => toast(conf.length ? 'دُمجت تعديلات محررين آخرين، مع تعارض في: ' + conflictNames(conf, D).join('، ') : 'دُمجت آخر تعديلات المحررين الآخرين مع مسودتك'), 300);
+    } else if (!base) writeBase(pub);
+  }
+  return d;
+}
+function markCanEdit(isDemo) {
+  try { const cur = localStorage.getItem('takamul.canEdit'); if (!(isDemo && cur === 'owner')) localStorage.setItem('takamul.canEdit', isDemo ? 'demo' : 'owner'); } catch (e) {}
+}
 window.TEditor = {
+  syncDraft() { syncDraft(); T.useData(D); return D; },
+  publish() { const d = T.readDraft(); if (d) { D = d.data; T.useData(D); } else if (!D) D = T.data; publishDialog(); },
+  dialogs: {
+    link(L, word, apply) { D = T.data; linkDialog(null, L, { word, apply }); },
+    media(kind, existing, hooks) { mediaDialog(null, kind, existing, hooks); },
+    lab(insert) { D = T.data; labDialog(null, { insert }); },
+  },
+  toast,
+  ask: askText,
   isOpen: () => open,
   async open(isDemo) {
     if (!root) { build(); $('.ed-tree', root).addEventListener('click', treeClick); }
     demo = !!isDemo;
-    const d = T.readDraft();
-    const pub = T.published();
-    D = d ? JSON.parse(JSON.stringify(d.data)) : pub;
-    D.labs = D.labs || []; D.site = D.site || {}; D.aliases = D.aliases || {};
-    // bring in what other editors published since this draft started
-    if (!d) writeBase(pub);
-    else {
-      const base = readBase();
-      if (base && !same(base, pub)) {
-        const conf = []; D = merge3(base, D, pub, conf, '');
-        writeBase(pub); T.saveDraft(D);
-        setTimeout(() => toast(conf.length ? 'دُمجت تعديلات محررين آخرين، مع تعارض في: ' + conflictNames(conf, D).join('، ') : 'دُمجت آخر تعديلات المحررين الآخرين مع مسودتك'), 300);
-      } else if (!base) writeBase(pub);
-    }
+    markCanEdit(isDemo);
+    const d = syncDraft();
     T.useData(D);
     await T.loadFiles();
     $('.ed-demo', root).classList.toggle('hide', !demo);

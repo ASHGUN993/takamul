@@ -15,7 +15,7 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': 
 const clone = o => JSON.parse(JSON.stringify(o));
 function plural(n, one, two, few) { return n === 1 ? one : n === 2 ? two : `${n} ${few}`; }
 /* Arabic counted noun: 1, 2, 3–10, 11+ */
-const W = { lesson: ['درس واحد', 'درسان', 'دروس', 'درسًا'], topic: ['موضوع واحد', 'موضوعان', 'مواضيع', 'موضوعًا'], branch: ['فرع واحد', 'فرعان', 'فروع', 'فرعًا'], term: ['مصطلح واحد', 'مصطلحان', 'مصطلحات', 'مصطلحًا'], subj: ['مادة واحدة', 'مادتان', 'مواد', 'مادة'], lab: ['تجربة واحدة', 'تجربتان', 'تجارب', 'تجربة'] };
+const W = { lesson: ['موضوع واحد', 'موضوعان', 'مواضيع', 'موضوعًا'], topic: ['وحدة واحدة', 'وحدتان', 'وحدات', 'وحدة'], branch: ['فرع واحد', 'فرعان', 'فروع', 'فرعًا'], term: ['مصطلح واحد', 'مصطلحان', 'مصطلحات', 'مصطلحًا'], subj: ['مادة واحدة', 'مادتان', 'مواد', 'مادة'], lab: ['تجربة واحدة', 'تجربتان', 'تجارب', 'تجربة'] };
 function cnt(n, w, bold) { w = W[w]; if (n === 1) return w[0]; if (n === 2) return w[1]; const m = n % 100; return (bold ? `<b>${n}</b>` : n) + ' ' + (m >= 3 && m <= 10 ? w[2] : w[3]); }
 T.esc = esc;
 
@@ -99,7 +99,7 @@ const LINK_RE = /\[\[([^\]|]+)\|([^\]]+)\]\]/g;
 function ytId(u) { const m = u.match(/(?:youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/)|youtu\.be\/)([\w-]{11})/); return m && m[1]; }
 function parseTarget(t) {
   t = String(t).trim(); let m;
-  if ((m = t.match(/^(?:درس|lesson)\s*:\s*(.+)$/i))) return { kind: 'lesson', id: m[1].trim() };
+  if ((m = t.match(/^(?:درس|موضوع|lesson)\s*:\s*(.+)$/i))) return { kind: 'lesson', id: m[1].trim() };
   if ((m = t.match(/^(?:تجربة|lab)\s*:\s*(.+)$/i))) return { kind: 'lab', id: m[1].trim() };
   if (/\.(mp4|webm|ogg)(\?|$)/i.test(t)) return { kind: 'video', url: t, file: true };
   if (/^https?:\/\//i.test(t)) {
@@ -321,11 +321,11 @@ function onKwClick(a, ctx) {
   const p = parseTarget(a.dataset.target);
   if (p.kind === 'lesson') {
     const L = IX.les[p.id], pl = IX.place[p.id];
-    if (!L || !pl) { showPop(a, `<div class="ph">رابط غير صالح</div><p>الدرس «${esc(p.id)}» غير موجود.</p><div class="row"><button class="b2" data-close>إغلاق</button></div>`, 'var(--red)'); return; }
+    if (!L || !pl) { showPop(a, `<div class="ph">رابط غير صالح</div><p>الموضوع «${esc(p.id)}» غير موجود.</p><div class="row"><button class="b2" data-close>إغلاق</button></div>`, 'var(--red)'); return; }
     const same = pl.s.id === ctx.subjectId;
-    showPop(a, `<div class="ph"><span class="dot" style="--c:${pl.s.color}"></span>${same ? 'درس في المادة نفسها' : 'درس من مادة ' + esc(pl.s.name)}</div>
-      <h5>${esc(L.title)}</h5><p>${esc(L.summary || (hasBody(L) ? '' : 'هذا الدرس قيد الإعداد.'))}</p>
-      <div class="row"><a class="b1" href="#lesson/${esc(L.id)}">افتح الدرس ←</a><button class="b2" data-close>إغلاق</button></div>`, pl.s.color);
+    showPop(a, `<div class="ph"><span class="dot" style="--c:${pl.s.color}"></span>${same ? 'موضوع في المادة نفسها' : 'موضوع من مادة ' + esc(pl.s.name)}</div>
+      <h5>${esc(L.title)}</h5><p>${esc(L.summary || (hasBody(L) ? '' : 'هذا الموضوع قيد الإعداد.'))}</p>
+      <div class="row"><a class="b1" href="#lesson/${esc(L.id)}">افتح الموضوع ←</a><button class="b2" data-close>إغلاق</button></div>`, pl.s.color);
   } else if (p.kind === 'url') {
     let host = p.url; try { host = new URL(p.url).hostname.replace(/^www\./, ''); } catch (e) {}
     showPop(a, `<div class="ph">مقالة / رابط خارجي</div><h5>${esc(a.textContent)}</h5><p dir="ltr" style="text-align:right">${esc(host)}</p>
@@ -430,15 +430,14 @@ function attachSearch(wrapEl) {
     if (!box) { box = document.createElement('div'); box.className = 'results'; wrapEl.appendChild(box); }
     let h = '';
     if (r.length) {
-      h += '<div class="grp">الدروس</div>' + r.map(({ d }) => `<a href="#lesson/${esc(d.l.id)}"><span class="dot" style="--c:${d.pl.s.color}"></span><span>${hl(d.l.title, q)}<small>${esc(d.pl.s.name)} · ${esc(d.pl.b.name)}${hasBody(d.l) ? '' : ' · قريبًا'}</small></span></a>`).join('');
+      h += '<div class="grp">المواضيع</div>' + r.map(({ d }) => `<a href="#lesson/${esc(d.l.id)}"><span class="dot" style="--c:${d.pl.s.color}"></span><span>${hl(d.l.title, q)}<small>${esc(d.pl.s.name)} · ${esc(d.pl.b.name)}${hasBody(d.l) ? '' : ' · قريبًا'}</small></span></a>`).join('');
     }
     if (tr.length) h += '<div class="grp">المصطلحات</div>' + tr.map(t => `<a href="#terms/${encodeURIComponent(t.term)}"><span class="dot" style="--c:var(--brand)"></span><span>${esc(t.term)}<small>${t.subjects.length > 1 ? 'مشترك بين ' + plural(t.subjects.length, 'مادة', 'مادتين', 'مواد') : 'مصطلح'}</small></span></a>`).join('');
-    if (!r.length && !tr.length) h += `<div class="grp">لا نتائج مطابقة في العناوين</div>`;
-    h += `<button type="button" class="ask-row"><span class="dot" style="--c:var(--orange)"></span><span>اسأل المساعد: «${esc(q)}»</span></button>`;
+    if (!r.length && !tr.length) h += `<div class="grp">لا نتائج مطابقة</div>`;
+    else h += `<a class="all" href="#search/${encodeURIComponent(q)}"><span class="dot" style="--c:var(--orange)"></span><span>عرض كل النتائج عن «${esc(q)}»</span></a>`;
     box.innerHTML = h;
-    items = $$('a,button.ask-row', box);
+    items = $$('a', box);
     sel = -1;
-    $('.ask-row', box).onclick = () => { const v = input.value; close(); input.value = ''; Chat.ask(v); };
     $$('a', box).forEach(a => a.addEventListener('click', () => { close(); input.value = ''; input.blur(); }));
   };
   input.addEventListener('input', draw);
@@ -452,7 +451,7 @@ function attachSearch(wrapEl) {
       e.preventDefault();
       if (sel >= 0 && items[sel]) { items[sel].click(); return; }
       const v = input.value.trim(); if (!v) return;
-      close(); input.value = ''; Chat.ask(v);
+      close(); input.value = ''; input.blur(); location.hash = '#search/' + encodeURIComponent(v);
     } else if (e.key === 'Escape') { close(); input.blur(); }
   });
   document.addEventListener('click', e => { if (!wrapEl.contains(e.target)) close(); });
@@ -470,7 +469,7 @@ const Chat = T.Chat = (function () {
   function build() {
     el = document.createElement('div');
     el.className = 'chat';
-    el.innerHTML = `<div class="chat-h"><div class="av">${subjIcon({}, 20)}</div><div><b>مساعد تكامل</b><small>يبحث لك في دروس الموقع ويقترح ما تقرأ</small></div><button type="button" aria-label="إغلاق">×</button></div>
+    el.innerHTML = `<div class="chat-h"><div class="av">${subjIcon({}, 20)}</div><div><b>مساعد تكامل</b><small>يبحث لك في مواضيع الموقع ويقترح ما تقرأ</small></div><button type="button" aria-label="إغلاق">×</button></div>
       <div class="msgs"></div>
       <form class="chat-in"><input placeholder="اكتب سؤالك…" aria-label="سؤالك"><button aria-label="إرسال"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M19 12H5M11 6l-6 6 6 6"/></svg></button></form>`;
     msgs = $('.msgs', el);
@@ -486,7 +485,7 @@ const Chat = T.Chat = (function () {
   function push(html) { history.push(html); msgs.insertAdjacentHTML('beforeend', html); msgs.scrollTop = msgs.scrollHeight; }
   function greet() {
     const s = suggestions();
-    push(`<div class="msg b">أهلًا! اسألني عن أي موضوع، وسأعطيك نبذة عنه وأقترح عليك درسًا من دروس الموقع لتعرف أكثر.</div>`);
+    push(`<div class="msg b">أهلًا! اسألني عن أي موضوع، وسأعطيك نبذة عنه وأقترح عليك موضوعًا من مواضيع الموقع لتعرف أكثر.</div>`);
     if (s.length) push(`<div class="sugg">${s.map(q => `<button type="button" data-q="${esc(q)}">${esc(q)}</button>`).join('')}</div>`);
   }
   function open() { if (!el) build(); el.classList.remove('hide'); setTimeout(() => $('input', el).focus(), 50); }
@@ -504,17 +503,17 @@ const Chat = T.Chat = (function () {
     if (termHit && termHit.subjects.length > 1) termLine = `<div class="rel">مصطلح «${esc(termHit.term)}» يرد في ${plural(termHit.subjects.length, 'مادة', 'مادتين', 'مواد')}. <a href="#terms/${encodeURIComponent(termHit.term)}" style="display:inline;color:var(--brand)">افتحه في فهرس المصطلحات</a></div>`;
     if (!best || best.s < 6) {
       const near = (r.length ? r.map(x => x.d.l) : DATA.lessons.filter(hasBody)).filter(l => IX.place[l.id]).slice(0, 3);
-      return `<div class="msg b">لم أجد درسًا عن هذا بعد.${near.length ? `<div class="rel">أقرب المواضيع الموجودة:${near.map(l => lessonLink(l, hasBody(l) ? '' : ' · قريبًا')).join('')}</div>` : ''}${termLine}</div>`;
+      return `<div class="msg b">لم أجد موضوعًا عن هذا بعد.${near.length ? `<div class="rel">أقرب المواضيع الموجودة:${near.map(l => lessonLink(l, hasBody(l) ? '' : ' · قريبًا')).join('')}</div>` : ''}${termLine}</div>`;
     }
     const L = best.d.l, pl = best.d.pl;
     if (!hasBody(L) && !L.summary) {
-      return `<div class="msg b" style="--c:${pl.s.color}"><span class="st">${esc(pl.s.name)} · ${esc(pl.b.name)}</span><h6>${esc(L.title)}</h6>هذا الموضوع موجود في فهرس الموقع، لكن درسه قيد الإعداد.<br><a class="go" href="#lesson/${esc(L.id)}">اعرض مكانه في المادة ←</a>${termLine}</div>`;
+      return `<div class="msg b" style="--c:${pl.s.color}"><span class="st">${esc(pl.s.name)} · ${esc(pl.b.name)}</span><h6>${esc(L.title)}</h6>هذا الموضوع موجود في فهرس الموقع، لكن شرحه قيد الإعداد.<br><a class="go" href="#lesson/${esc(L.id)}">اعرض مكانه في المادة ←</a>${termLine}</div>`;
     }
     const cross = [...new Set([...(IX.out[L.id] || []).filter(k => k.kind === 'lesson').map(k => k.id), ...(IX.inb[L.id] || [])])]
       .map(id => IX.les[id]).filter(x => x && IX.place[x.id] && IX.place[x.id].s.id !== pl.s.id).slice(0, 3);
     const others = r.slice(1, 3).filter(x => x.s >= best.s * .5 && hasBody(x.d.l)).map(x => x.d.l).filter(x => !cross.includes(x));
     return `<div class="msg b" style="--c:${pl.s.color}"><span class="st">${esc(pl.s.name)} · ${esc(pl.b.name)}</span><h6>${esc(L.title)}</h6>${esc(L.summary || '')}
-      <br><a class="go" href="#lesson/${esc(L.id)}">اقرأ الدرس كاملًا ←</a>
+      <br><a class="go" href="#lesson/${esc(L.id)}">اقرأ الموضوع كاملًا ←</a>
       ${cross.length ? `<div class="rel">مرتبط به من مواد أخرى:${cross.map(x => lessonLink(x)).join('')}</div>` : ''}
       ${others.length ? `<div class="rel">قد يهمك أيضًا:${others.map(x => lessonLink(x)).join('')}</div>` : ''}${termLine}</div>`;
   }
@@ -581,17 +580,17 @@ function pageHome() {
   const list = [...rest.slice(0, 2).map(l => ({ l })), ...labItems.slice(0, 1), ...rest.slice(2).map(l => ({ l }))].slice(0, 3);
   const fs = featured && IX.place[featured.id].s;
   const latest = featured ? `<section class="sec"><div class="wrap">
-    <div class="sec-h"><h2>أحدث <em>الدروس والتجارب</em></h2><p>ما أُضيف مؤخرًا إلى المنصة</p></div>
+    <div class="sec-h"><h2>أحدث <em>المواضيع والتجارب</em></h2><p>ما أُضيف مؤخرًا إلى المنصة</p></div>
     <div class="latest">
-      <article class="feat"><a href="#lesson/${esc(featured.id)}">${thumb(featured, fs, true)}<span class="pill on-img">درس مميز</span></div></a>
-        <span class="pill">درس</span> <span class="subj-tag" style="--c:${fs.color}">● ${esc(fs.name)}</span>
+      <article class="feat"><a href="#lesson/${esc(featured.id)}">${thumb(featured, fs, true)}<span class="pill on-img">موضوع مميز</span></div></a>
+        <span class="pill">موضوع</span> <span class="subj-tag" style="--c:${fs.color}">● ${esc(fs.name)}</span>
         <h3><a href="#lesson/${esc(featured.id)}">${esc(featured.title)}</a></h3><p>${esc(featured.summary || featured.subtitle || '')}</p>
-        <a class="more" href="#lesson/${esc(featured.id)}">افتح الدرس</a></article>
+        <a class="more" href="#lesson/${esc(featured.id)}">افتح الموضوع</a></article>
       <div class="items">${list.map(it => {
         const l = it.l, s = IX.place[l.id].s;
         if (it.lab) return `<a class="item" href="#lesson/${esc(l.id)}"><div class="thumb" style="--c:var(--navy);background:linear-gradient(160deg,#1f2160,#3b3f9a)"><span style="width:52px;height:52px;border-radius:50%;background:#fff;display:grid;place-items:center">${playSvg(22)}</span><span class="pill on-img">تجربة</span></div>
-          <div><span class="subj-tag" style="--c:${s.color}">● ${esc(s.name)}</span><h4>${esc(it.lab.title)}</h4><p>تجربة تفاعلية داخل درس «${esc(l.title)}».</p></div></a>`;
-        return `<a class="item" href="#lesson/${esc(l.id)}">${thumb(l, s)}<span class="pill on-img">درس</span></div>
+          <div><span class="subj-tag" style="--c:${s.color}">● ${esc(s.name)}</span><h4>${esc(it.lab.title)}</h4><p>تجربة تفاعلية داخل موضوع «${esc(l.title)}».</p></div></a>`;
+        return `<a class="item" href="#lesson/${esc(l.id)}">${thumb(l, s)}<span class="pill on-img">موضوع</span></div>
           <div><span class="subj-tag" style="--c:${s.color}">● ${esc(s.name)}</span><h4>${esc(l.title)}</h4><p>${esc(l.summary || l.subtitle || '')}</p></div></a>`;
       }).join('')}</div>
     </div></div></section>` : '';
@@ -604,7 +603,7 @@ function pageHome() {
     integ = `<section class="sec" style="padding-top:20px"><div class="wrap"><div class="integ">
       <div><span class="pill" style="background:#EEE7FF;color:var(--brand)">كيف تترابط المواد؟</span>
         <h3 style="margin-top:14px">مصطلح واحد، <em>${plural(shared.subjects.length, 'مادة', 'مادتان', 'مواد')}</em></h3>
-        <p>مصطلح «<b>${esc(shared.term)}</b>» يظهر في دروس ${shared.subjects.map(id => `<b style="color:${IX.subj[id].color}">${esc(IX.subj[id].name)}</b>`).join(' و')}. في «تكامل» كل كلمة مرتبطة تفتح شرحها في المادة الأخرى، فيرى الطالب الموضوع من أكثر من زاوية.</p>
+        <p>مصطلح «<b>${esc(shared.term)}</b>» يظهر في مواضيع ${shared.subjects.map(id => `<b style="color:${IX.subj[id].color}">${esc(IX.subj[id].name)}</b>`).join(' و')}. في «تكامل» كل كلمة مرتبطة تفتح شرحها في المادة الأخرى، فيرى الطالب الموضوع من أكثر من زاوية.</p>
         <div style="display:flex;gap:10px;margin-top:20px;flex-wrap:wrap"><a class="btn btn-o" href="#terms/${encodeURIComponent(shared.term)}">افتح فهرس المصطلحات</a><a class="btn btn-g" href="#lesson/${esc(ls[0].id)}">ابدأ من «${esc(ls[0].title)}»</a></div></div>
       <div class="web"><svg viewBox="0 0 100 100" preserveAspectRatio="none">${pts.map(p => `<line x1="50" y1="50" x2="${p.x}" y2="${p.y}" stroke="${p.s.color}" stroke-width=".5" stroke-dasharray="2 1.5" vector-effect="non-scaling-stroke" style="stroke-width:2"/>`).join('')}</svg>
         <span class="node center" style="left:50%;top:50%">${esc(shared.term)}</span>
@@ -617,13 +616,13 @@ function pageHome() {
     <div>
       <h1>كل المواد،<br><em>معرفة واحدة</em> مترابطة</h1>
       <p class="lead">«تكامل» يجمع المواد الدراسية في مكان واحد، ويربط كل مفهوم بما يتصل به في المواد الأخرى: من الخلية في الأحياء إلى الطاقة في الفيزياء والروابط في الكيمياء.</p>
-      <div class="hero-search search" id="heroSearch"><input type="search" placeholder="اسأل عن أي موضوع…" aria-label="اسأل"><button class="btn btn-o" type="button" data-ask-hero>اسأل المساعد</button></div>
-      <div class="chips">${sugg.slice(0, 4).map(q => `<button type="button" class="chip" data-q="${esc(q)}">${esc(q)}</button>`).join('')}</div>
+      <div class="hero-search search" id="heroSearch"><input type="search" placeholder="ابحث عن موضوع أو مصطلح…" aria-label="بحث"><button class="btn btn-o" type="button" data-search-hero>بحث</button></div>
+      <div class="chips"><span class="chips-l">💬 اسأل المساعد:</span>${sugg.slice(0, 4).map(q => `<button type="button" class="chip" data-q="${esc(q)}">${esc(q)}</button>`).join('')}</div>
     </div>
     ${art}
   </div></section>
   <section class="sec" style="padding-top:20px"><div class="wrap">
-    <div class="sec-h"><h2>اختر <em>المادة</em></h2><p>كل مادة مقسمة إلى مواضيع وفروع ودروس</p></div>
+    <div class="sec-h"><h2>اختر <em>المادة</em></h2><p>كل مادة مقسمة إلى وحدات وفروع ومواضيع</p></div>
     <div class="subjects">${subs.map(s => { const c = sCount(s); return `<a class="scard" href="#subject/${esc(s.id)}" style="--c:${s.color}">
       <span class="sicon">${subjIcon(s, 28)}</span><h3>${esc(s.name)}</h3>
       <div class="tops">${s.topics.map(t => esc(t.name)).join(' · ')}</div>
@@ -631,7 +630,7 @@ function pageHome() {
   </div></section>
   ${latest}${integ}`;
   attachSearch($('#heroSearch'));
-  $('[data-ask-hero]').onclick = () => { const i = $('#heroSearch input'); const v = i.value.trim(); i.value = ''; v ? Chat.ask(v) : Chat.open(); };
+  $('[data-search-hero]').onclick = () => { const i = $('#heroSearch input'); const v = i.value.trim(); if (v) location.hash = '#search/' + encodeURIComponent(v); else i.focus(); };
   $$('.chips [data-q]').forEach(b => b.onclick = () => Chat.ask(b.dataset.q));
   document.title = `${DATA.site.name || 'تكامل'} — ${DATA.site.tagline || ''}`;
 }
@@ -641,6 +640,8 @@ function subjTabs(cur) {
 }
 function pageSubject(id) {
   const s = IX.subj[id] || DATA.subjects[0];
+  const ed = !!(window.TInline && window.TInline.canEdit());
+  const add = (kind, pid, label) => ed ? `<button type="button" class="add-btn" data-add="${kind}" data-pid="${esc(pid)}">＋ ${label}</button>` : '';
   if (!s) { view.innerHTML = '<div class="wrap sec">لا توجد مواد بعد.</div>'; return; }
   const c = sCount(s);
   view.innerHTML = `<section class="strip"><div class="wrap">
@@ -653,8 +654,10 @@ function pageSubject(id) {
         const l = IX.les[lid]; if (!l) return '';
         const ready = hasBody(l), lab = /^::lab\[/m.test(l.body || '');
         return `<a class="lrow${ready ? '' : ' empty'}" href="#lesson/${esc(l.id)}" ${s.dir === 'ltr' ? 'dir="ltr"' : ''}><span class="dot" style="--c:${ready ? s.color : '#d5d5e2'}"></span><span class="t">${esc(l.title)}</span>${lab ? '<span class="lab-i">تجربة</span>' : ''}${ready ? (l.minutes ? `<span class="mins">${l.minutes} د</span>` : '') : '<span class="soon">قريبًا</span>'}</a>`;
-      }).join('')}</div>`).join('')}</section>`).join('')}</div></div>`;
+      }).join('')}${add('lesson', b.id, 'موضوع جديد')}</div>`).join('')}${add('branch', t.id, 'فرع جديد')}</section>`).join('')}
+      ${ed ? `<button type="button" class="topic add-topic" data-add="topic" data-pid="${esc(s.id)}">＋ وحدة جديدة في ${esc(s.name)}</button>` : ''}</div></div>`;
   document.title = `${s.name} — تكامل`;
+  $$('[data-add]', view).forEach(b => b.onclick = () => window.TInline.addTo(b.dataset.add, b.dataset.pid));
 }
 
 function treeHtml(s, cur) {
@@ -685,9 +688,9 @@ function lessonView(L, opts = {}) {
     main: `<article class="card lesson">
       ${L.cover ? `<div class="cover"><img src="${esc(fileUrl(L.cover))}" alt=""></div>` : ''}
       <div class="lbody"${ltr ? ' dir="ltr" lang="en"' : ''}>
-        <div class="ltags" dir="rtl">${s.name ? `<span class="tag subj" style="--c:${s.color}">● ${esc(s.name)}</span>` : ''}${L.code ? `<span class="tag code">${esc(L.code)}</span>` : ''}${L.minutes ? `<span class="tag">⏱ ${L.minutes} دقائق قراءة</span>` : ''}${/^::lab\[/m.test(L.body || '') ? '<span class="tag">🧪 تجربة تفاعلية</span>' : ''}${L.sample ? '<span class="tag sample">درس نموذجي</span>' : ''}</div>
+        <div class="ltags" dir="rtl">${s.name ? `<span class="tag subj" style="--c:${s.color}">● ${esc(s.name)}</span>` : ''}${L.code ? `<span class="tag code">${esc(L.code)}</span>` : ''}${L.minutes ? `<span class="tag">⏱ ${L.minutes} دقائق قراءة</span>` : ''}${/^::lab\[/m.test(L.body || '') ? '<span class="tag">🧪 تجربة تفاعلية</span>' : ''}${L.sample ? '<span class="tag sample">موضوع نموذجي</span>' : ''}</div>
         <h1>${esc(L.title)}</h1>${L.subtitle ? `<div class="sub">${esc(L.subtitle)}</div>` : ''}
-        ${ready ? `<div class="prose">${html}</div>` : `<div class="pending" dir="rtl"><b>هذا الدرس قيد الإعداد</b>${L.summary ? esc(L.summary) : 'سيُضاف محتواه قريبًا.'}</div>`}
+        ${ready ? `<div class="prose">${html}</div>` : `<div class="pending" dir="rtl"><b>هذا الموضوع قيد الإعداد</b>${L.summary ? esc(L.summary) : 'سيُضاف محتواه قريبًا.'}</div>`}
         ${opts.pager || ''}
       </div></article>`,
   };
@@ -697,24 +700,30 @@ T.lessonView = lessonView;
 let spy = null;
 function pageLesson(id, term) {
   const L = IX.les[id], pl = IX.place[id];
-  if (!L || !pl) { view.innerHTML = `<div class="wrap sec"><div class="pending"><b>الدرس غير موجود</b><a class="more" href="#">العودة للرئيسية</a></div></div>`; return; }
+  if (!L || !pl) { view.innerHTML = `<div class="wrap sec"><div class="pending"><b>الموضوع غير موجود</b><a class="more" href="#">العودة للرئيسية</a></div></div>`; return; }
   const s = pl.s;
-  const ord = IX.order[s.id], i = ord.indexOf(id);
-  const prev = IX.les[ord[i - 1]], next = IX.les[ord[i + 1]];
-  const pager = `<div class="pager" dir="rtl">${prev ? `<a href="#lesson/${esc(prev.id)}">→ السابق<b>${esc(prev.title)}</b></a>` : ''}${next ? `<a class="next" href="#lesson/${esc(next.id)}">التالي ←<b>${esc(next.title)}</b></a>` : ''}</div>`;
-  const v = lessonView(L, { pager });
   const rel = relatedOf(L, s);
+  // end of lesson: the other topics of the same branch (or of the same topic), then related lessons from other subjects
+  let sibs = pl.b.lessons.filter(x => x !== id), groupName = pl.b.name;
+  if (!sibs.length) { sibs = pl.t.branches.flatMap(b => b.lessons).filter(x => x !== id); groupName = pl.t.name; }
+  const card = (l, c, note) => `<a class="rcard${hasBody(l) ? '' : ' soon'}" href="#lesson/${esc(l.id)}" style="--c:${c.color}">${note ? `<small>${esc(note)}</small>` : ''}<b>${esc(l.title)}</b>${l.summary ? `<span>${esc(l.summary)}</span>` : ''}${hasBody(l) ? '' : '<em>قريبًا</em>'}</a>`;
+  const sibCards = sibs.map(x => IX.les[x]).filter(Boolean).map(l => card(l, s, groupName === pl.b.name ? '' : IX.place[l.id].b.name));
+  const footer = (sibCards.length || rel.length) ? `<div class="lfoot" dir="rtl">
+      ${sibCards.length ? `<h3>مواضيع أخرى في «${esc(groupName)}»</h3><div class="rcards">${sibCards.join('')}</div>` : ''}
+      ${rel.length ? `<h3>مرتبط به من مواد أخرى</h3><div class="rcards">${rel.map(r => { const rs = IX.place[r.l.id].s; return card(r.l, rs, rs.name + (r.via ? ' · عبر «' + r.via + '»' : '')); }).join('')}</div>` : ''}
+    </div>` : '';
+  const v = lessonView(L, { pager: footer });
   const q = (L.faq && L.faq[0]) || `ما هو ${L.title}؟`;
   view.innerHTML = `<section class="strip"><div class="wrap">
       <div class="crumbs"><a href="#subject">المواد</a><i></i><a href="#subject/${esc(s.id)}" style="color:${s.color};font-weight:600">${esc(s.name)}</a><i></i><a href="#subject/${esc(s.id)}">${esc(pl.t.name)}</a><i></i><span>${esc(pl.b.name)}</span><i></i><b>${esc(L.title)}</b></div>
-      <button class="btn btn-g tree-toggle" style="margin-top:14px" type="button" data-tree>☰ فهرس المادة</button>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px">${window.TInline && window.TInline.canEdit() ? '<button class="btn btn-o" type="button" data-inline>✎ تعديل هذه الصفحة</button>' : ''}<button class="btn btn-g tree-toggle" type="button" data-tree>☰ فهرس المادة</button></div>
     </div></section>
     <div class="wrap"><div class="lgrid">
       <aside class="tree-col"><div class="card sticky">${treeHtml(s, id)}</div></aside>
       <div>${v.main}</div>
       <aside class="side">
-        ${v.heads.length > 1 ? `<div class="card toc-card"><h4>في هذا الدرس</h4><nav class="toc">${v.heads.map(h => `<a href="#lesson/${esc(id)}" data-sec="${esc(h.id)}">${esc(h.text)}</a>`).join('')}</nav></div>` : ''}
-        <div class="card links-card"><h4>🔗 مرتبط بمواد أخرى</h4>${rel.length ? rel.map(r => { const rs = IX.place[r.l.id].s; return `<a class="lk" href="#lesson/${esc(r.l.id)}" style="--c:${rs.color}"><span class="sicon">${subjIcon(rs, 18)}</span><span><b>${esc(r.l.title)}</b><small><em>${esc(rs.name)}</em>${r.via ? ` · عبر «${esc(r.via)}»` : ' · يشير إلى هذا الدرس'}${hasBody(r.l) ? '' : ' · قريبًا'}</small></span></a>`; }).join('') : '<p class="muted" style="font-size:13.5px">لا روابط بمواد أخرى بعد. أضفها من المحرّر بتحديد كلمة وربطها بدرس.</p>'}</div>
+        ${v.heads.length > 1 ? `<div class="card toc-card"><h4>في هذا الموضوع</h4><nav class="toc">${v.heads.map(h => `<a href="#lesson/${esc(id)}" data-sec="${esc(h.id)}">${esc(h.text)}</a>`).join('')}</nav></div>` : ''}
+        <div class="card links-card"><h4>🔗 مرتبط بمواد أخرى</h4>${rel.length ? rel.map(r => { const rs = IX.place[r.l.id].s; return `<a class="lk" href="#lesson/${esc(r.l.id)}" style="--c:${rs.color}"><span class="sicon">${subjIcon(rs, 18)}</span><span><b>${esc(r.l.title)}</b><small><em>${esc(rs.name)}</em>${r.via ? ` · عبر «${esc(r.via)}»` : ' · يشير إلى هذا الموضوع'}${hasBody(r.l) ? '' : ' · قريبًا'}</small></span></a>`; }).join('') : '<p class="muted" style="font-size:13.5px">لا روابط بمواد أخرى بعد. أضفها من المحرّر بتحديد كلمة وربطها بموضوع.</p>'}</div>
         <div class="card ask-card"><h4>المساعد</h4><p>عندك سؤال عن هذا الموضوع؟</p><button type="button" data-q="${esc(q)}">${esc(q)}<span>←</span></button></div>
       </aside>
     </div></div>`;
@@ -725,6 +734,8 @@ function pageLesson(id, term) {
   $('.ask-card [data-q]', view).onclick = e => Chat.ask(e.currentTarget.dataset.q);
   const tc = $('.tree-col', view);
   $('[data-tree]', view).onclick = () => tc.classList.toggle('open');
+  const ie = $('[data-inline]', view);
+  if (ie) ie.onclick = () => window.TInline.start(id);
   tc.addEventListener('click', e => { if (e.target.closest('a')) tc.classList.remove('open'); });
   // table of contents: scroll without changing the route
   $$('.toc a', view).forEach(a => a.onclick = e => { e.preventDefault(); const t = document.getElementById(a.dataset.sec); if (t) t.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
@@ -754,7 +765,7 @@ function pageTerms(focus) {
   all.sort((a, b) => sortKey(a).localeCompare(sortKey(b), 'ar'));
   let onlyShared = false, filter = '';
   view.innerHTML = `<section class="strip"><div class="wrap"><div class="crumbs"><a href="#">الرئيسية</a><i></i><b>فهرس المصطلحات</b></div>
-    <div class="subj-head"><span class="sicon" style="--c:var(--brand)">أ–ي</span><div><h1>فهرس المصطلحات</h1><p>${cnt(all.length, 'term')} · يُبنى تلقائيًا من الكلمات المرتبطة في الدروس</p></div></div></div></section>
+    <div class="subj-head"><span class="sicon" style="--c:var(--brand)">أ–ي</span><div><h1>فهرس المصطلحات</h1><p>${cnt(all.length, 'term')} · يُبنى تلقائيًا من الكلمات المرتبطة في المواضيع</p></div></div></div></section>
     <div class="wrap" style="padding-bottom:60px">
       <div class="terms-tools"><input type="search" placeholder="ابحث في المصطلحات…" aria-label="بحث في المصطلحات"><button type="button" class="toggle">⇄ المشتركة بين المواد فقط</button></div>
       <div class="letters"></div><div class="tlist"></div></div>`;
@@ -782,12 +793,28 @@ function pageTerms(focus) {
   }
 }
 
+function pageSearch(q) {
+  q = (q || '').trim();
+  const r = q ? search(q) : [], tr = q ? searchTerms(q) : [];
+  view.innerHTML = `<section class="strip"><div class="wrap"><div class="crumbs"><a href="#">الرئيسية</a><i></i><b>البحث</b></div>
+    <div class="subj-head"><span class="sicon" style="--c:var(--navy)"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></span><div><h1>${q ? `نتائج «${esc(q)}»` : 'البحث'}</h1><p>${q ? (r.length ? cnt(r.length, 'lesson') : 'لا مواضيع مطابقة') : 'اكتب كلمة للبحث في المواضيع والمصطلحات'}</p></div></div>
+    <form class="search-page" id="searchPage"><input type="search" value="${esc(q)}" placeholder="ابحث عن موضوع أو مصطلح…" aria-label="بحث"><button class="btn btn-o">بحث</button></form></div></section>
+    <div class="wrap" style="padding-bottom:60px">
+      ${tr.length ? `<div class="sres-terms">${tr.map(t => `<a class="chip" href="#terms/${encodeURIComponent(t.term)}">مصطلح: <b>${esc(t.term)}</b>${t.subjects.length > 1 ? ' · ' + plural(t.subjects.length, 'مادة', 'مادتان', 'مواد') : ''}</a>`).join('')}</div>` : ''}
+      <div class="sres">${r.map(({ d }) => `<a class="sres-i" href="#lesson/${esc(d.l.id)}" style="--c:${d.pl.s.color}">
+        <small>${esc(d.pl.s.name)} › ${esc(d.pl.t.name)} › ${esc(d.pl.b.name)}</small><b>${hl(d.l.title, q)}</b>${d.l.summary ? `<span>${esc(d.l.summary)}</span>` : ''}${hasBody(d.l) ? '' : '<em>قريبًا</em>'}</a>`).join('')}</div>
+      ${q && !r.length && !tr.length ? '<div class="pending"><b>لم نجد شيئًا مطابقًا</b>جرّب كلمة أخرى أو تصفّح المواد.</div>' : ''}
+    </div>`;
+  $('#searchPage').onsubmit = e => { e.preventDefault(); const v = $('#searchPage input').value.trim(); if (v) location.hash = '#search/' + encodeURIComponent(v); };
+  document.title = (q ? `بحث: ${q}` : 'البحث') + ' — تكامل';
+}
+
 function pageLabs() {
   view.innerHTML = `<section class="strip"><div class="wrap"><div class="crumbs"><a href="#">الرئيسية</a><i></i><b>التجارب</b></div>
-    <div class="subj-head"><span class="sicon" style="--c:var(--orange)">${playSvg(26)}</span><div><h1>التجارب التفاعلية</h1><p>${DATA.labs.length} ${DATA.labs.length === 1 ? 'تجربة' : 'تجارب'} مضمَّنة داخل الدروس</p></div></div></div></section>
+    <div class="subj-head"><span class="sicon" style="--c:var(--orange)">${playSvg(26)}</span><div><h1>التجارب التفاعلية</h1><p>${DATA.labs.length} ${DATA.labs.length === 1 ? 'تجربة' : 'تجارب'} مضمَّنة داخل المواضيع</p></div></div></div></section>
     <div class="wrap" style="padding-bottom:60px"><div class="labs">${DATA.labs.map(x => {
       const lid = (IX.labIn[x.id] || [])[0], l = IX.les[lid], s = l && IX.place[lid] ? IX.place[lid].s : null;
-      return `<a class="labcard" href="${l ? `#lesson/${esc(lid)}` : '#labs'}"><div class="lb"><span class="play">${playSvg(24)}</span></div><div class="c">${s ? `<span class="subj-tag" style="--c:${s.color}">● ${esc(s.name)}</span>` : ''}<h3>${esc(x.title)}</h3><p class="muted" style="font-size:13px">${l ? `داخل درس «${esc(l.title)}»` : 'غير مضمَّنة في أي درس بعد'}</p></div></a>`;
+      return `<a class="labcard" href="${l ? `#lesson/${esc(lid)}` : '#labs'}"><div class="lb"><span class="play">${playSvg(24)}</span></div><div class="c">${s ? `<span class="subj-tag" style="--c:${s.color}">● ${esc(s.name)}</span>` : ''}<h3>${esc(x.title)}</h3><p class="muted" style="font-size:13px">${l ? `داخل موضوع «${esc(l.title)}»` : 'غير مضمَّنة في أي موضوع بعد'}</p></div></a>`;
     }).join('') || '<div class="pending"><b>لا تجارب بعد</b>أضف تجربة من المحرّر.</div>'}</div></div>`;
   document.title = 'التجارب — تكامل';
 }
@@ -810,6 +837,7 @@ function route() {
     case 'lesson': pageLesson(parts[1], parts.slice(2).join('/')); break;
     case 'terms': pageTerms(parts.slice(1).join('/')); break;
     case 'labs': pageLabs(); break;
+    case 'search': pageSearch(parts.slice(1).join('/')); break;
     default: pageHome();
   }
   setNav(name);

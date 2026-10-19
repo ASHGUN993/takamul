@@ -204,7 +204,18 @@ footer .logo{color:#fff}
 .prose li:before{content:"";position:absolute;inset-inline-start:4px;top:.85em;width:8px;height:8px;border-radius:50%;background:var(--orange)}
 .prose strong{color:var(--ink)}
 .prose figure{margin:22px 0;background:var(--bg);border-radius:18px;padding:18px;text-align:center}
-.prose figure img{margin:0 auto;max-height:420px;border-radius:10px}
+.prose figure img{margin:0 auto;max-height:520px;border-radius:10px;width:auto}
+.prose figure.sized{width:var(--w);margin-inline:auto}
+.prose figure.sized img{width:100%;max-height:none}
+.prose figure.media:not(.fl-r):not(.fl-l){clear:both}
+.prose figure.fl-r{float:right;margin:6px 0 14px 24px}
+.prose figure.fl-l{float:left;margin:6px 24px 14px 0}
+.prose figure.fl-r,.prose figure.fl-l{padding:10px}
+.prose figure video{width:100%;border-radius:10px;background:#000;display:block}
+.prose figure .embed{aspect-ratio:16/9;border-radius:10px;overflow:hidden;background:#000}
+.prose figure .embed iframe{width:100%;height:100%;border:0;display:block}
+.prose h2,.prose h3,.prose .lab,.prose .pager{clear:both}
+.prose:after{content:"";display:block;clear:both}
 .prose figcaption{font-size:13px;color:var(--muted);margin-top:10px}
 [dir=ltr] .prose li:before{inset-inline-start:4px}
 .kw{color:var(--navy);font-weight:600;border-bottom:2px dotted var(--orange);cursor:pointer;padding:0 1px;transition:.15s;border-radius:3px}
@@ -362,6 +373,8 @@ footer .logo{color:#fff}
   .lgrid>.side .toc-card{display:none}
   .topics{grid-template-columns:1fr}
   .letter-grp{grid-template-columns:44px 1fr}
+  .prose figure.fl-r,.prose figure.fl-l{float:none;margin:18px auto}
+  .prose figure.sized{width:min(100%,max(var(--w),70%))}
   .tlist{grid-template-columns:1fr}
   .fab{bottom:16px;left:16px}
   .chat{left:16px;bottom:88px}
@@ -414,7 +427,8 @@ footer .logo{color:#fff}
   <span class="badge">اسأل</span>
 </button>
 
-<script src="content.js"></script>
+<script>/* always load the latest content (GitHub Pages caches files for a few minutes) */
+document.write('<script src="content.js?v=' + Date.now() + '"><\/script>');</script>
 <script src="app.js"></script>
 <script src="editor.js" defer></script>
 </body>

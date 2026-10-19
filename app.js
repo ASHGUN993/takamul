@@ -59,12 +59,14 @@ let DATA, IX, USING_DRAFT = false;
 function readDraft() { try { const d = JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null'); return d && d.data ? d : null; } catch (e) { return null; } }
 function viewPub() { try { return sessionStorage.getItem(VIEWPUB_KEY) === '1'; } catch (e) { return false; } }
 T.readDraft = readDraft;
-T.saveDraft = function (data) { try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ data, savedAt: Date.now() })); return true; } catch (e) { return false; } };
+T.saveDraft = function (data, meta) { try { localStorage.setItem(DRAFT_KEY, JSON.stringify(Object.assign({ data, savedAt: Date.now() }, meta || {}))); return true; } catch (e) { return false; } };
 T.clearDraft = function () { try { localStorage.removeItem(DRAFT_KEY); sessionStorage.removeItem(VIEWPUB_KEY); } catch (e) {} };
 T.published = () => clone(PUB);
 
 function loadData() {
-  const d = readDraft();
+  let d = readDraft();
+  // a draft that is now identical to the published content is no longer needed
+  if (d && JSON.stringify(d.data) === JSON.stringify(PUB)) { T.clearDraft(); try { localStorage.removeItem('takamul.base.v1'); } catch (e) {} d = null; }
   if (d && !viewPub()) { DATA = d.data; USING_DRAFT = true; } else { DATA = clone(PUB); USING_DRAFT = false; }
   DATA.labs = DATA.labs || []; DATA.aliases = DATA.aliases || {}; DATA.site = DATA.site || {};
   T.data = DATA;
@@ -78,6 +80,8 @@ function drawDraftBar() {
   const bar = $('#draftbar');
   const has = !!readDraft();
   if (!has) { bar.innerHTML = ''; return; }
+  const d = readDraft();
+  if (USING_DRAFT && d.publishedAt && d.publishedAt >= d.savedAt) { bar.innerHTML = `<div class="draftbar" style="background:#167a5a">✓ نُشرت تعديلاتك، وتظهر لكل الزوار خلال دقيقة أو دقيقتين<a href="#editor">العودة للمحرّر</a></div>`; return; }
   bar.innerHTML = USING_DRAFT
     ? `<div class="draftbar">تشاهد نسختك المعدّلة من المحرّر (تظهر في متصفحك فقط)<a href="#" data-viewpub="1">عرض النسخة المنشورة</a><a href="#editor">العودة للمحرّر</a></div>`
     : `<div class="draftbar">تشاهد النسخة المنشورة<a href="#" data-viewpub="0">عرض مسودتي</a></div>`;
@@ -197,6 +201,42 @@ function labHtml(id, ctx) {
       </button>
     </div></section>`;
 }
+/* media line: ![caption](path-or-url){size align}  e.g. {50% يمين} */
+const MEDIA_RE = /^!\[([^\]]*)\]\(([^)\s]+)\)\s*(?:\{([^}]*)\})?$/;
+const SIZE_WORDS = { 'صغير': 33, 'متوسط': 50, 'كبير': 75, 'كامل': 100, small: 33, medium: 50, large: 75, full: 100 };
+const ALIGN_WORDS = { 'يمين': 'r', 'يسار': 'l', 'وسط': 'c', right: 'r', left: 'l', center: 'c' };
+function parseMedia(line) {
+  const m = String(line).trim().match(MEDIA_RE);
+  if (!m) return null;
+  let size = 100, align = 'c';
+  (m[3] || '').split(/\s+/).filter(Boolean).forEach(w => {
+    const p = w.match(/^(\d{1,3})%?$/);
+    if (p) size = Math.max(15, Math.min(100, +p[1]));
+    else if (SIZE_WORDS[w.toLowerCase()]) size = SIZE_WORDS[w.toLowerCase()];
+    else if (ALIGN_WORDS[w.toLowerCase()]) align = ALIGN_WORDS[w.toLowerCase()];
+  });
+  const src = m[2].trim();
+  const kind = /\.(mp4|webm|ogg|ogv|mov|m4v)(\?|#|$)/i.test(src) ? 'video' : ytId(src) || /vimeo\.com\//.test(src) ? 'embed' : 'image';
+  return { cap: m[1].trim(), src, size, align, kind };
+}
+function mediaLine(o) {
+  const opts = [];
+  if (o.size && o.size !== 100) opts.push(o.size + '%');
+  if (o.align === 'r') opts.push('يمين'); else if (o.align === 'l') opts.push('يسار');
+  return `![${(o.cap || '').replace(/[\[\]]/g, '')}](${o.src})${opts.length ? `{${opts.join(' ')}}` : ''}`;
+}
+T.parseMedia = parseMedia; T.mediaLine = mediaLine;
+function mediaHtml(o) {
+  const url = fileUrl(o.src);
+  let inner;
+  if (o.kind === 'video') inner = `<video src="${esc(url)}" controls preload="metadata" playsinline></video>`;
+  else if (o.kind === 'embed') {
+    const p = parseTarget(o.src);
+    inner = `<div class="embed"><iframe src="${esc((p.embed || '').replace('autoplay=1', 'autoplay=0'))}" title="${esc(o.cap || 'فيديو')}" allow="fullscreen; encrypted-media; picture-in-picture" allowfullscreen loading="lazy"></iframe></div>`;
+  } else inner = `<img src="${esc(url)}" alt="${esc(o.cap)}" loading="lazy">`;
+  const cls = 'media' + (o.align === 'r' ? ' fl-r' : o.align === 'l' ? ' fl-l' : '') + (o.size < 100 ? ' sized' : '');
+  return `<figure class="${cls}" style="--w:${o.size}%" data-src="${esc(o.src)}">${inner}${o.cap ? `<figcaption>${esc(o.cap)}</figcaption>` : ''}</figure>`;
+}
 function renderBody(src, ctx = {}) {
   const lines = String(src || '').replace(/\r/g, '').split('\n');
   let html = '', para = [], list = null, n = 0;
@@ -213,10 +253,7 @@ function renderBody(src, ctx = {}) {
       html += `<h${lvl} id="${id}">${inline(m[2], ctx)}</h${lvl}>`; continue;
     }
     if ((m = line.match(/^[-•]\s+(.+)$/))) { flushP(); (list = list || []).push(m[1]); continue; }
-    if ((m = line.match(/^!\[([^\]]*)\]\(([^)]+)\)$/))) {
-      flushP(); flushL();
-      html += `<figure><img src="${esc(fileUrl(m[2].trim()))}" alt="${esc(m[1])}" loading="lazy">${m[1] ? `<figcaption>${esc(m[1])}</figcaption>` : ''}</figure>`; continue;
-    }
+    if ((m = parseMedia(line))) { flushP(); flushL(); html += mediaHtml(m); continue; }
     if ((m = line.match(/^::lab\[([^\]]+)\]$/))) {
       flushP(); flushL();
       const id = m[1].trim(), lab = IX.labs[id];

@@ -1,9 +1,11 @@
-/* محتوى موقع «تكامل» — يُعدَّل من المحرّر (#editor) ثم «تصدير». */
+/* محتوى موقع «تكامل» — يُعدَّل من المحرّر (#editor). */
 window.TAKAMUL = {
  "site": {
   "name": "تكامل",
   "tagline": "كل المواد، معرفة واحدة",
-  "featured": "bio-cell-respiration"
+  "featured": "bio-cell-respiration",
+  "repo": "ASHGUN993/takamul",
+  "branch": "main"
  },
  "aliases": {
   "أدينوسين ثلاثي الفوسفات": "ATP"

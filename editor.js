@@ -86,6 +86,13 @@ const CSS = `
 .dlg-f{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
 .help{font-size:13px;line-height:2}
 .help code{background:var(--bg);border-radius:6px;padding:2px 6px;font-family:ui-monospace,monospace;direction:ltr;unicode-bidi:embed;font-size:12.5px}
+.ed-prev figure.media{cursor:pointer;outline:2px dashed transparent;outline-offset:3px;transition:outline-color .15s}
+.ed-prev figure.media:hover{outline-color:var(--orange)}
+.mprev{background:var(--bg);border-radius:14px;padding:12px;margin:4px 0 6px;overflow:hidden}
+.mprev:after{content:"";display:block;clear:both}
+.mprev i{display:block;height:7px;border-radius:4px;background:#dcdde8;margin:0 0 7px}
+.mp-fig{background:linear-gradient(135deg,#FFE1BC,#D7F3FF);border-radius:8px;height:64px;display:grid;place-items:center;color:var(--navy);transition:.2s}
+.dtabs [data-p].on,.dtabs [data-a].on{background:var(--navy);color:#fff;border-color:var(--navy)}
 .toast{position:fixed;bottom:22px;right:50%;transform:translateX(50%);background:var(--ink);color:#fff;border-radius:30px;padding:10px 20px;font-size:13px;z-index:200;animation:pin .2s}
 @media (max-width:1100px){.ed-body{grid-template-columns:260px 1fr}.ed-prev{display:none}.ed-body.pv .ed-prev{display:block;grid-column:2}.ed-body.pv .ed-form{display:none}}
 @media (max-width:700px){.ed-body{grid-template-columns:1fr}.ed-tree{max-height:34vh;border-bottom:1px solid var(--line)}.ed-body.pv .ed-prev{grid-column:1}.ed-top .st{display:none}.row3,.row2{grid-template-columns:1fr}}
@@ -164,7 +171,8 @@ function build() {
       <button class="btn btn-g" data-act="pv" style="display:none">المعاينة</button>
       <a class="btn btn-g" data-act="site" href="#">↗ عرض الموقع بتعديلاتي</a>
       <button class="btn btn-g" data-act="reset">⟲ إعادة الضبط</button>
-      <button class="btn btn-o" data-act="export">⤓ تصدير</button>
+      <button class="btn btn-g" data-act="export" title="تنزيل المحتوى والملفات في ملف zip">⤓ zip</button>
+      <button class="btn btn-o" data-act="publish">☁ نشر للجميع</button>
     </div>
     <div class="ed-demo hide"><span>🧪 <b>وضع تجريبي:</b> جرّب إضافة درس أو ربط كلمة. تعديلاتك تظهر في متصفحك فقط ولن يراها غيرك.</span><button data-act="reset">إعادة الضبط</button></div>
     <div class="ed-body"><div class="ed-col ed-tree"></div><div class="ed-col ed-form"></div><div class="ed-col ed-prev"></div></div>`;
@@ -173,6 +181,7 @@ function build() {
     const b = e.target.closest('[data-act]'); if (!b) return;
     const a = b.dataset.act;
     if (a === 'export') { e.preventDefault(); doExport(); }
+    else if (a === 'publish') { e.preventDefault(); publishDialog(); }
     else if (a === 'reset') { e.preventDefault(); doReset(); }
     else if (a === 'help') { e.preventDefault(); showHelp(); }
     else if (a === 'pv') { e.preventDefault(); $('.ed-body', root).classList.toggle('pv'); b.textContent = $('.ed-body', root).classList.contains('pv') ? 'التحرير' : 'المعاينة'; }
@@ -290,7 +299,7 @@ function drawForm() {
     <div class="fld"><label>نص الدرس</label>
       <div class="tb">
         <button data-do="h2" title="عنوان قسم">عنوان</button><button data-do="h3">عنوان فرعي</button><button data-do="bold"><b>غامق</b></button><button data-do="list">• قائمة</button>
-        <span class="sep"></span><button class="hl" data-do="link">🔗 ربط كلمة</button><button data-do="img">🖼 صورة</button><button data-do="lab">🧪 تجربة</button>
+        <span class="sep"></span><button class="hl" data-do="link">🔗 ربط كلمة</button><button data-do="img">🖼 صورة</button><button data-do="video">🎬 فيديو</button><button data-do="lab">🧪 تجربة</button>
       </div>
       <textarea class="body" data-f="body" dir="${pl && pl.s.dir === 'ltr' ? 'ltr' : 'rtl'}" placeholder="اكتب نص الدرس هنا…&#10;&#10;## عنوان قسم&#10;فقرة فيها [[كلمة مرتبطة|درس:معرّف_الدرس]]">${esc(L.body || '')}</textarea></div>
     <label class="chk"><input type="checkbox" data-feat${D.site.featured === L.id ? ' checked' : ''}> درس مميز في الصفحة الرئيسية</label>`;
@@ -334,14 +343,8 @@ async function tool(t, L) {
   if (t === 'list') return linePrefix(ta, '- ');
   if (t === 'bold') { const x = ta.value.slice(ta.selectionStart, ta.selectionEnd) || 'نص غامق'; return replaceSel(ta, `**${x}**`); }
   if (t === 'link') return linkDialog(ta, L);
-  if (t === 'img') {
-    const f = await pickFile('image/*'); if (!f) return;
-    const { base, ext } = slugFile(f.name); const path = `images/${base}-${Date.now().toString(36).slice(-5)}${ext || '.png'}`;
-    await storeFile(path, f);
-    const cap = await askText('وصف الصورة', '', 'يظهر تحت الصورة (اختياري)');
-    insertBlock(ta, `![${cap || ''}](${path})`); toast('أُضيفت الصورة');
-    return;
-  }
+  if (t === 'img') return mediaDialog(ta, 'image');
+  if (t === 'video') return mediaDialog(ta, 'video');
   if (t === 'lab') return labDialog(ta);
   if (t === 'cover') {
     const f = await pickFile('image/*'); if (!f) return;
@@ -349,6 +352,86 @@ async function tool(t, L) {
     await storeFile(path, f); L.cover = path; L.updated = today(); changed(); drawForm(); return;
   }
   if (t === 'nocover') { delete L.cover; changed(); drawForm(); }
+}
+
+
+/* ---------- images & videos: size and position ---------- */
+const MAX_VIDEO_MB = 95;
+function mediaPath(file, folder) {
+  const { base, ext } = slugFile(file.name);
+  return `${folder}/${base}-${Date.now().toString(36).slice(-5)}${ext || (folder === 'videos' ? '.mp4' : '.png')}`;
+}
+function findMediaLine(ta, src) {
+  const lines = ta.value.split('\n');
+  return lines.findIndex(l => { const p = T.parseMedia(l); return p && p.src === src; });
+}
+function setLine(ta, idx, text) {
+  const lines = ta.value.split('\n');
+  if (text === null) { lines.splice(idx, 1); if (lines[idx] === '' && lines[idx - 1] === '') lines.splice(idx, 1); } else lines[idx] = text;
+  ta.value = lines.join('\n'); ta.dispatchEvent(new Event('input'));
+}
+function mediaDialog(ta, kind, existing) {
+  const o = existing ? Object.assign({}, existing.o) : { cap: '', src: '', size: kind === 'video' ? 100 : 60, align: 'c' };
+  const isVid = existing ? existing.o.kind !== 'image' : kind === 'video';
+  const noun = isVid ? 'الفيديو' : 'الصورة';
+  let file = null, tab = 'file';
+  dialog(existing ? `إعدادات ${noun}` : (isVid ? 'إدراج فيديو' : 'إدراج صورة'), `
+    ${!existing && isVid ? '<div class="dtabs" data-tabs><button data-k="file" class="on">رفع ملف فيديو</button><button data-k="url">رابط يوتيوب أو Vimeo</button></div>' : ''}
+    ${existing ? '' : `<div data-pane="file"><div class="fld"><label>${isVid ? `ملف الفيديو <small>mp4 أو webm، حتى ${MAX_VIDEO_MB} ميغابايت</small>` : 'الصورة'}</label><button class="sbtn" data-file style="width:100%;padding:10px">اختر ملفًا…</button></div></div>
+    <div data-pane="url" class="hide"><div class="fld"><label>الرابط</label><input type="url" dir="ltr" data-url placeholder="https://www.youtube.com/watch?v=…"></div></div>`}
+    <div class="fld"><label>الوصف <small>يظهر تحت ${noun} (اختياري)</small></label><input type="text" data-cap value="${esc(o.cap)}"></div>
+    <div class="fld"><label>الحجم <small>نسبة من عرض الدرس</small> · <b data-sv style="color:var(--orange)">${o.size}%</b></label>
+      <input type="range" min="20" max="100" step="5" value="${o.size}" data-size style="width:100%;accent-color:#F48C06">
+      <div class="dtabs" style="margin:6px 0 0" data-presets><button data-p="33">صغير</button><button data-p="50">متوسط</button><button data-p="75">كبير</button><button data-p="100">كامل العرض</button></div></div>
+    <div class="fld"><label>الموضع</label><div class="dtabs" style="margin:0" data-align><button data-a="r">يمين، والنص حولها</button><button data-a="c">في الوسط</button><button data-a="l">يسار، والنص حولها</button></div></div>
+    <div class="mprev"><div class="mp-fig"><span>${isVid ? '▶' : '🖼'}</span></div><i></i><i></i><i></i><i></i><i></i><i></i><i style="width:60%"></i></div>
+    <div class="dlg-f">${existing ? '<button class="sbtn d" data-del style="margin-inline-end:auto">حذف من الدرس</button>' : ''}<button class="sbtn" data-x>إلغاء</button><button class="sbtn o" data-ok>${existing ? 'حفظ' : 'إدراج'}</button></div>`, (m, close) => {
+    const fig = $('.mp-fig', m);
+    const sync = () => {
+      $('[data-sv]', m).textContent = o.size + '%';
+      $('[data-size]', m).value = o.size;
+      $$('[data-presets] button', m).forEach(b => b.classList.toggle('on', +b.dataset.p === o.size));
+      $$('[data-align] button', m).forEach(b => b.classList.toggle('on', b.dataset.a === o.align));
+      fig.style.width = o.size + '%';
+      fig.style.float = o.align === 'r' ? 'right' : o.align === 'l' ? 'left' : 'none';
+      fig.style.margin = o.align === 'c' ? '0 auto 8px' : o.align === 'r' ? '0 0 6px 10px' : '0 10px 6px 0';
+    };
+    sync();
+    $('[data-size]', m).oninput = e => { o.size = +e.target.value; sync(); };
+    $$('[data-presets] button', m).forEach(b => b.onclick = () => { o.size = +b.dataset.p; if (o.size === 100) o.align = 'c'; sync(); });
+    $$('[data-align] button', m).forEach(b => b.onclick = () => { o.align = b.dataset.a; if (o.align !== 'c' && o.size > 60) o.size = 45; sync(); });
+    $$('[data-tabs] button', m).forEach(b => b.onclick = () => { tab = b.dataset.k; $$('[data-tabs] button', m).forEach(x => x.classList.toggle('on', x === b)); $$('[data-pane]', m).forEach(p => p.classList.toggle('hide', p.dataset.pane !== tab)); });
+    const fb = $('[data-file]', m);
+    if (fb) fb.onclick = async e => {
+      e.preventDefault();
+      const f = await pickFile(isVid ? 'video/mp4,video/webm,video/*' : 'image/*'); if (!f) return;
+      if (isVid && f.size > MAX_VIDEO_MB * 1048576) { toast(`الملف أكبر من ${MAX_VIDEO_MB} ميغابايت. ارفعه على يوتيوب وضع رابطه.`); return; }
+      file = f; fb.textContent = `${f.name} · ${f.size < 1048576 ? Math.max(1, Math.round(f.size / 1024)) + ' كيلوبايت' : (f.size / 1048576).toFixed(1) + ' ميغابايت'}`;
+    };
+    $('[data-x]', m).onclick = close;
+    const del = $('[data-del]', m);
+    if (del) del.onclick = () => { const i = findMediaLine(ta, existing.o.src); if (i >= 0) setLine(ta, i, null); close(); toast(`حُذف ${noun}`); };
+    $('[data-ok]', m).onclick = async () => {
+      o.cap = $('[data-cap]', m).value.trim();
+      if (!existing) {
+        if (tab === 'url') {
+          const u = $('[data-url]', m).value.trim();
+          const p = T.parseTarget(u);
+          if (!u || p.kind !== 'video') { toast('ضع رابط فيديو من يوتيوب أو Vimeo أو ملف mp4'); return; }
+          o.src = u;
+        } else {
+          if (!file) { toast('اختر ملفًا أولًا'); return; }
+          $('[data-ok]', m).textContent = 'جارٍ الحفظ…';
+          o.src = mediaPath(file, isVid ? 'videos' : 'images');
+          await storeFile(o.src, file);
+        }
+        close(); insertBlock(ta, T.mediaLine(o)); toast(isVid ? 'أُضيف الفيديو' : 'أُضيفت الصورة'); return;
+      }
+      const i = findMediaLine(ta, existing.o.src);
+      if (i >= 0) setLine(ta, i, T.mediaLine(o));
+      close(); toast('حُفظت التغييرات');
+    };
+  });
 }
 
 function linkDialog(ta, L) {
@@ -361,7 +444,7 @@ function linkDialog(ta, L) {
     <div class="fld"><label>الكلمة في النص</label><input type="text" data-word value="${esc(word)}" placeholder="مثلًا: ATP"></div>
     <div class="dtabs"><button data-k="lesson" class="on">درس في الموقع</button><button data-k="video">فيديو</button><button data-k="url">مقالة أو رابط</button><button data-k="lab">تجربة</button></div>
     <div data-pane="lesson"><input type="text" data-q placeholder="ابحث عن درس…" style="width:100%;border:1px solid #E1E2EC;border-radius:12px;padding:9px 12px"><div class="pick"></div></div>
-    <div data-pane="video" class="hide"><div class="fld"><label>رابط الفيديو <small>يوتيوب أو Vimeo أو ملف mp4</small></label><input type="url" dir="ltr" data-u="video" placeholder="https://www.youtube.com/watch?v=…"></div></div>
+    <div data-pane="video" class="hide"><div class="fld"><label>رابط الفيديو <small>يوتيوب أو Vimeo أو ملف mp4</small></label><input type="url" dir="ltr" data-u="video" placeholder="https://www.youtube.com/watch?v=…"></div><button class="sbtn" data-upvid>أو ارفع ملف فيديو (mp4)</button></div>
     <div data-pane="url" class="hide"><div class="fld"><label>رابط المقالة</label><input type="url" dir="ltr" data-u="url" placeholder="https://…"></div></div>
     <div data-pane="lab" class="hide"><div class="pick" data-labs></div><p class="hint" style="margin-top:8px;color:var(--muted);font-size:12.5px">لإضافة تجربة جديدة استخدم زر «🧪 تجربة» في شريط الأدوات.</p></div>
     <div class="dlg-f"><button class="sbtn" data-x>إلغاء</button><button class="sbtn o" data-ok>ربط</button></div>`, (m, close) => {
@@ -378,6 +461,13 @@ function linkDialog(ta, L) {
     lp.innerHTML = D.labs.map(x => `<button data-lab="${esc(x.id)}">🧪 ${esc(x.title)}</button>`).join('') || '<p style="padding:12px;color:var(--muted)">لا تجارب بعد</p>';
     lp.onclick = e => { const b = e.target.closest('[data-lab]'); if (!b) return; target = 'تجربة:' + b.dataset.lab; $$('button', lp).forEach(x => x.classList.toggle('on', x === b)); };
     $$('.dtabs button', m).forEach(b => b.onclick = () => { kind = b.dataset.k; target = ''; $$('.dtabs button', m).forEach(x => x.classList.toggle('on', x === b)); $$('[data-pane]', m).forEach(p => p.classList.toggle('hide', p.dataset.pane !== kind)); });
+    $('[data-upvid]', m).onclick = async e => {
+      e.preventDefault();
+      const f = await pickFile('video/mp4,video/webm,video/*'); if (!f) return;
+      if (f.size > MAX_VIDEO_MB * 1048576) { toast(`الملف أكبر من ${MAX_VIDEO_MB} ميغابايت. ارفعه على يوتيوب وضع رابطه.`); return; }
+      const path = mediaPath(f, 'videos'); await storeFile(path, f);
+      $('[data-u=video]', m).value = path; e.target.textContent = '✓ ' + f.name;
+    };
     $('[data-x]', m).onclick = close;
     $('[data-ok]', m).onclick = () => {
       const w = $('[data-word]', m).value.trim().replace(/[\[\]|]/g, '');
@@ -445,7 +535,10 @@ function showHelp() {
     <p><code>**نص**</code> نص غامق. السطر الذي يبدأ بـ <code>- </code> عنصر في قائمة. سطر فارغ يبدأ فقرة جديدة.</p>
     <p><code>[[ATP|درس:chem-energy]]</code> كلمة تفتح درسًا من الموقع. إن كان من مادة أخرى تظهر بلون تلك المادة وتُضاف إلى «مرتبط بمواد أخرى».</p>
     <p><code>[[فيديو|https://youtube.com/…]]</code> كلمة تفتح فيديو في نافذة. و<code>[[مقالة|https://…]]</code> رابط خارجي.</p>
-    <p><code>![وصف](images/صورة.png)</code> صورة في سطر مستقل. و<code>::lab[المعرّف]</code> تجربة داخل النص.</p>
+    <p><code>![وصف](images/صورة.png)</code> صورة في سطر مستقل، و<code>![وصف](images/صورة.png){50% يمين}</code> بنصف العرض على اليمين والنص حولها. الموضع: يمين أو يسار أو وسط.</p>
+    <p><code>![وصف](videos/فيديو.mp4)</code> فيديو مرفوع، أو رابط يوتيوب مكان المسار، ويقبل الحجم والموضع نفسيهما.</p>
+    <p><code>::lab[المعرّف]</code> تجربة داخل النص.</p>
+    <p>اضغط على أي صورة أو فيديو في المعاينة لتغيير حجمه أو موضعه.</p>
     <p>كل كلمة مرتبطة تُضاف تلقائيًا إلى <b>فهرس المصطلحات</b>.</p>
     <p style="margin-top:10px;color:var(--muted)">الأسهل: حدّد كلمة واضغط «🔗 ربط كلمة».</p></div>
     <div class="dlg-f"><button class="sbtn o" data-x>فهمت</button></div>`, (m, close) => { $('[data-x]', m).onclick = close; });
@@ -462,6 +555,15 @@ function drawPreview() {
   const art = $('.lesson', el);
   T.wireKw(art, { subjectId: v.s.id });
   T.wireLabs(art);
+  $$('figure.media', art).forEach(fg => {
+    fg.title = 'اضغط لتغيير الحجم والموضع';
+    fg.addEventListener('click', e => {
+      if (e.target.closest('video,iframe')) return;
+      const ta = bodyTA(); if (!ta) return;
+      const i = findMediaLine(ta, fg.dataset.src); if (i < 0) return;
+      mediaDialog(ta, 'image', { o: T.parseMedia(ta.value.split('\n')[i]) });
+    });
+  });
   el.scrollTop = sc;
 }
 
@@ -472,7 +574,7 @@ async function doExport() {
   try {
     const JSZip = await loadJSZip();
     const zip = new JSZip();
-    zip.file('content.js', '/* محتوى موقع «تكامل» — يُعدَّل من المحرّر (#editor) ثم «تصدير». */\nwindow.TAKAMUL = ' + JSON.stringify(D, null, 1) + ';\n');
+    zip.file('content.js', contentJs(D));
     const files = await T.idbAll();
     Object.entries(files).forEach(([p, v]) => { if (v && v.blob) zip.file(p, v.blob); });
     zip.file('اقرأني.txt', 'تحديث موقع «تكامل»\n\n1) فكّ هذا الملف داخل مجلد الموقع (حيث index.html).\n2) وافق على استبدال content.js.\n3) ارفع التغييرات إلى المستودع، فيتحدث الموقع خلال دقيقة.\n\nعدد الدروس: ' + D.lessons.length + '\nالملفات الجديدة: ' + Object.keys(files).length + '\n');
@@ -486,9 +588,210 @@ async function doExport() {
 async function doReset() {
   if (!confirm('إعادة الموقع كما هو منشور؟ ستُحذف كل تعديلاتك وملفاتك المرفوعة في هذا المتصفح.')) return;
   T.clearDraft(); await T.idbClear();
+  try { localStorage.removeItem(BASE_KEY); localStorage.removeItem(PUSHED_KEY); } catch (e) {}
   D = T.published(); T.useData(D); sel = null;
   select('lesson', D.site.featured && findLesson(D.site.featured) ? D.site.featured : D.lessons[0].id);
   drawTree(); setStatus('عادت النسخة المنشورة'); T.Chat.reset();
+}
+
+
+/* ---------- several editors: three-way merge + publishing to GitHub ---------- */
+const BASE_KEY = 'takamul.base.v1', PUSHED_KEY = 'takamul.pushed.v1', GH_KEY = 'takamul.gh.v1';
+const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+const clone = o => o === undefined ? undefined : JSON.parse(JSON.stringify(o));
+const lsGet = k => { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } };
+const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } };
+const readBase = () => lsGet(BASE_KEY), writeBase = b => lsSet(BASE_KEY, b);
+T._merge3 = (b, m, r) => { const c = []; return { out: merge3(b, m, r, c, ''), conf: c }; };
+function contentJs(d) { return '/* محتوى موقع «تكامل» — يُعدَّل من المحرّر (#editor). */\nwindow.TAKAMUL = ' + JSON.stringify(d, null, 1) + ';\n'; }
+function parseContentJs(txt) { const i = txt.indexOf('{'), j = txt.lastIndexOf('}'); return JSON.parse(txt.slice(i, j + 1)); }
+
+/* base = what this editor started from, m = mine, r = what is published now.
+   Keeps both sides' changes; when both changed the same field, mine wins and the path is reported. */
+const isObj = x => x && typeof x === 'object' && !Array.isArray(x);
+const byId = a => Array.isArray(a) && a.length > 0 && a.every(x => isObj(x) && 'id' in x);
+function merge3(b, m, r, conf, path) {
+  if (same(m, b)) return clone(r);
+  if (same(r, b)) return clone(m);
+  if (same(m, r)) return clone(m);
+  if (m === undefined || r === undefined) { if (m === undefined) { conf.push(path + '#deleted'); return undefined; } conf.push(path); return clone(m); }
+  if (Array.isArray(m) && Array.isArray(r)) {
+    if (byId(m) || byId(r) || byId(b)) return mergeById(b || [], m, r, conf, path);
+    if ([...m, ...r].every(x => typeof x === 'string')) {
+      const base = b || [];
+      const out = r.filter(x => !(base.includes(x) && !m.includes(x)));
+      m.forEach(x => { if (!base.includes(x) && !out.includes(x)) out.push(x); });
+      return out;
+    }
+    conf.push(path); return clone(m);
+  }
+  if (isObj(m) && isObj(r)) {
+    const out = {}, bb = isObj(b) ? b : {};
+    new Set([...Object.keys(m), ...Object.keys(r)]).forEach(k => { const v = merge3(bb[k], m[k], r[k], conf, path + '.' + k); if (v !== undefined) out[k] = v; });
+    return out;
+  }
+  conf.push(path); return clone(m);
+}
+function mergeById(b, m, r, conf, path) {
+  const ids = a => a.map(x => x.id), map = a => Object.fromEntries(a.map(x => [x.id, x]));
+  const B = map(b), M = map(m), R = map(r);
+  let order = same(ids(m), ids(b)) ? ids(r) : ids(m);
+  ids(r).forEach(id => { if (!(id in B) && !order.includes(id)) order.push(id); });
+  const out = [];
+  order.forEach(id => {
+    const p = `${path}[${id}]`;
+    if (id in B && !(id in M)) { if (id in R && !same(R[id], B[id])) conf.push(p + '#deleted'); return; }
+    if (id in B && !(id in R)) { if (id in M && !same(M[id], B[id])) { conf.push(p); out.push(clone(M[id])); } return; }
+    const v = merge3(B[id], M[id], R[id], conf, p);
+    if (v !== undefined) out.push(v);
+  });
+  return out;
+}
+function conflictNames(conf, d) {
+  const names = new Set();
+  conf.forEach(p => {
+    const m = p.match(/\.lessons\[([^\]]+)\]/) || p.match(/\[([^\]]+)\]/);
+    const l = m && (d.lessons || []).find(x => x.id === m[1]);
+    names.add(l ? `«${l.title}»` : 'هيكل المواد');
+  });
+  return [...names];
+}
+function changeSummary(base, d) {
+  const B = Object.fromEntries((base.lessons || []).map(l => [l.id, l]));
+  const ch = d.lessons.filter(l => !same(l, B[l.id])).map(l => l.title);
+  const del = (base.lessons || []).filter(l => !d.lessons.some(x => x.id === l.id)).length;
+  const tree = !same(base.subjects, d.subjects) || !same(base.labs, d.labs) || !same(base.site, d.site);
+  return { ch, del, tree, any: ch.length || del || tree };
+}
+
+/* GitHub */
+function ghCfg() { return lsGet(GH_KEY); }
+function defaultRepo() {
+  if (D.site && D.site.repo) return D.site.repo;
+  const h = location.hostname;
+  if (h.endsWith('.github.io')) { const seg = location.pathname.split('/').filter(Boolean)[0]; return h.split('.')[0] + '/' + (seg || h); }
+  return '';
+}
+function ghErr(st) {
+  return st === 401 ? 'رمز الدخول غير صحيح أو انتهت صلاحيته.'
+    : st === 403 ? 'رمز الدخول لا يملك صلاحية الكتابة على المستودع. تأكد أنك مدعو للمستودع وأن الرمز فيه صلاحية public_repo.'
+    : st === 404 ? 'المستودع غير موجود، أو حسابك ليس مدعوًا إليه.'
+    : st === 409 ? 'المستودع فارغ.'
+    : st === 422 ? 'نشر محرر آخر في اللحظة نفسها. أعد المحاولة.'
+    : 'تعذّر الاتصال بـ GitHub (' + st + ').';
+}
+async function gh(cfg, path, opts = {}) {
+  let res;
+  try {
+    res = await fetch('https://api.github.com' + path, {
+      method: opts.method || 'GET', body: opts.body, cache: 'no-store',
+      headers: Object.assign({ Authorization: 'Bearer ' + cfg.token, Accept: opts.accept || 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' }, opts.body ? { 'Content-Type': 'application/json' } : {}),
+    });
+  } catch (e) { throw new Error('تعذّر الاتصال بـ GitHub. تحقق من الإنترنت.'); }
+  if (!res.ok) { const e = new Error(ghErr(res.status)); e.status = res.status; throw e; }
+  return opts.raw ? res.text() : res.json();
+}
+function blobB64(blob) { return new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(String(fr.result).split(',')[1] || ''); fr.onerror = () => rej(fr.error); fr.readAsDataURL(blob); }); }
+
+async function publishNow(cfg, step, askConflicts) {
+  const R = cfg.repo, BR = cfg.branch || 'main';
+  for (let attempt = 0; attempt < 3; attempt++) {
+    step('قراءة آخر نسخة منشورة…');
+    const head = (await gh(cfg, `/repos/${R}/git/ref/heads/${encodeURIComponent(BR)}`)).object.sha;
+    const commit = await gh(cfg, `/repos/${R}/git/commits/${head}`);
+    let remote = null;
+    try { remote = parseContentJs(await gh(cfg, `/repos/${R}/contents/content.js?ref=${head}`, { accept: 'application/vnd.github.raw+json', raw: true })); }
+    catch (e) { if (e.status !== 404) throw e; }
+    const base = readBase() || T.published();
+    const conf = [];
+    const merged = remote ? merge3(base, D, remote, conf, '') : clone(D);
+    if (conf.length && attempt === 0 && !(await askConflicts(conflictNames(conf, merged)))) return null;
+    const files = await T.idbAll(), pushed = lsGet(PUSHED_KEY) || {};
+    const todo = Object.entries(files).filter(([p, v]) => v && v.blob && pushed[p] !== v.at);
+    const tree = [];
+    for (let i = 0; i < todo.length; i++) {
+      const [p, v] = todo[i];
+      step(`رفع الملفات ${i + 1} من ${todo.length}…`);
+      const bl = await gh(cfg, `/repos/${R}/git/blobs`, { method: 'POST', body: JSON.stringify({ content: await blobB64(v.blob), encoding: 'base64' }) });
+      tree.push({ path: p, mode: '100644', type: 'blob', sha: bl.sha });
+    }
+    const sum = changeSummary(base, D);
+    tree.push({ path: 'content.js', mode: '100644', type: 'blob', content: contentJs(merged) });
+    step('حفظ التعديلات…');
+    const t = await gh(cfg, `/repos/${R}/git/trees`, { method: 'POST', body: JSON.stringify({ base_tree: commit.tree.sha, tree }) });
+    const what = sum.ch.length ? sum.ch.slice(0, 3).join('، ') + (sum.ch.length > 3 ? ` و${sum.ch.length - 3} أخرى` : '') : 'هيكل المواد';
+    const c = await gh(cfg, `/repos/${R}/git/commits`, { method: 'POST', body: JSON.stringify({ message: `تحديث المحتوى: ${what}${cfg.login ? ' — ' + cfg.login : ''}`, tree: t.sha, parents: [head] }) });
+    step('النشر…');
+    try { await gh(cfg, `/repos/${R}/git/refs/heads/${encodeURIComponent(BR)}`, { method: 'PATCH', body: JSON.stringify({ sha: c.sha }) }); }
+    catch (e) { if (e.status === 422 && attempt < 2) continue; throw e; }
+    todo.forEach(([p, v]) => { pushed[p] = v.at; });
+    lsSet(PUSHED_KEY, pushed);
+    D = merged; T.useData(D); writeBase(merged);
+    T.saveDraft(D, { publishedAt: Date.now() + 1 });
+    return { sha: c.sha, url: `https://github.com/${R}/commit/${c.sha}`, conflicts: conf.length };
+  }
+}
+
+function connectHtml(cfg) {
+  const repo = (cfg && cfg.repo) || defaultRepo();
+  return `<p style="font-size:13.5px;line-height:1.9;margin-bottom:12px">ليظهر تعديلك لكل الزوار، اربط المحرّر بحسابك على GitHub مرة واحدة:</p>
+    <ol style="font-size:13px;line-height:2;padding-inline-start:20px;margin-bottom:14px;color:#4a4a66">
+      <li>يجب أن يكون حسابك مدعوًا للمستودع (صاحب المستودع يدعوك من <b>Settings ← Collaborators</b>).</li>
+      <li>افتح <a href="https://github.com/settings/tokens/new?scopes=public_repo&description=%D9%85%D8%AD%D8%B1%D8%B1%20%D8%AA%D9%83%D8%A7%D9%85%D9%84" target="_blank" rel="noopener" style="color:var(--brand);font-weight:600">صفحة إنشاء رمز الدخول ↗</a> (صلاحية <code>public_repo</code> محددة مسبقًا).</li>
+      <li>اختر مدة الصلاحية، واضغط <b>Generate token</b>، وانسخ الرمز هنا.</li>
+    </ol>
+    <div class="fld"><label>رمز الدخول</label><input type="password" data-token dir="ltr" placeholder="ghp_…" autocomplete="off"></div>
+    <div class="row2"><div class="fld"><label>المستودع</label><input type="text" data-repo dir="ltr" value="${esc(repo)}" placeholder="owner/repo"></div>
+      <div class="fld"><label>الفرع</label><input type="text" data-branch dir="ltr" value="${esc((cfg && cfg.branch) || (D.site && D.site.branch) || 'main')}"></div></div>
+    <p style="font-size:12px;color:var(--muted)">يُحفظ الرمز في هذا المتصفح فقط، ولا يُرسل إلا إلى GitHub.</p>
+    <div class="dlg-f"><button class="sbtn" data-x>إلغاء</button><button class="sbtn o" data-connect>اتصال</button></div>`;
+}
+function publishDialog() {
+  const cfg = ghCfg();
+  if (!cfg || !cfg.token) {
+    dialog('ربط المحرّر بـ GitHub', connectHtml(cfg), (m, close) => {
+      $('[data-x]', m).onclick = close;
+      $('[data-connect]', m).onclick = async () => {
+        const c = { token: $('[data-token]', m).value.trim(), repo: $('[data-repo]', m).value.trim().replace(/^https?:\/\/github\.com\//, '').replace(/\/$/, ''), branch: $('[data-branch]', m).value.trim() || 'main' };
+        if (!c.token || !/^[^/\s]+\/[^/\s]+$/.test(c.repo)) { toast('أدخل رمز الدخول واسم المستودع بالشكل owner/repo'); return; }
+        const b = $('[data-connect]', m); b.textContent = 'جارٍ التحقق…';
+        try {
+          const repo = await gh(c, `/repos/${c.repo}`);
+          if (repo.permissions && repo.permissions.push === false) throw new Error('حسابك لا يملك صلاحية الكتابة على هذا المستودع. اطلب من صاحبه دعوتك.');
+          try { c.login = (await gh(c, '/user')).login; } catch (e) {}
+          lsSet(GH_KEY, c); close(); toast('تم الربط' + (c.login ? ' باسم ' + c.login : '')); publishDialog();
+        } catch (e) { b.textContent = 'اتصال'; toast(e.message); }
+      };
+    });
+    return;
+  }
+  const base = readBase() || T.published();
+  const sum = changeSummary(base, D);
+  dialog('نشر للجميع', `
+    <p style="font-size:13px;color:var(--muted);margin-bottom:12px">متصل${cfg.login ? ' باسم <b dir="ltr">' + esc(cfg.login) + '</b>' : ''} · <span dir="ltr">${esc(cfg.repo)}</span> · <a href="#" data-logout style="color:var(--red)">قطع الاتصال</a></p>
+    <div style="background:var(--bg);border-radius:14px;padding:14px;font-size:13.5px;line-height:1.9;margin-bottom:12px">
+      ${sum.any ? `<b style="color:var(--navy)">ما سيُنشر:</b><br>${sum.ch.length ? `دروس عُدِّلت أو أُضيفت (${sum.ch.length}): ${sum.ch.slice(0, 6).map(esc).join('، ')}${sum.ch.length > 6 ? '…' : ''}<br>` : ''}${sum.del ? `دروس حُذفت: ${sum.del}<br>` : ''}${sum.tree ? 'تغييرات في المواد أو المواضيع أو التجارب<br>' : ''}` : 'لا تعديلات جديدة منذ آخر نشر. يمكنك النشر لرفع أي ملفات متبقية.'}
+    </div>
+    <p style="font-size:12.5px;color:var(--muted);line-height:1.8">إن نشر محرر آخر في الوقت نفسه تُدمج تعديلاتكما تلقائيًا. يظهر التحديث لكل الزوار خلال دقيقة أو دقيقتين.</p>
+    <div data-step style="font-size:13px;color:var(--brand);font-weight:600;min-height:20px;margin-top:8px"></div>
+    <div class="dlg-f"><button class="sbtn" data-x>إغلاق</button><button class="sbtn o" data-go>☁ انشر الآن</button></div>`, (m, close) => {
+    $('[data-x]', m).onclick = close;
+    $('[data-logout]', m).onclick = e => { e.preventDefault(); try { localStorage.removeItem(GH_KEY); } catch (err) {} close(); toast('قُطع الاتصال'); };
+    $('[data-go]', m).onclick = async () => {
+      const go = $('[data-go]', m), st = $('[data-step]', m);
+      go.disabled = true; go.textContent = 'جارٍ النشر…';
+      try {
+        const r = await publishNow(cfg, t => { st.textContent = t; }, names => Promise.resolve(confirm(`محرر آخر عدّل أيضًا: ${names.join('، ')}.\nإن تابعت تُعتمد نسختك في هذه المواضع فقط، وتبقى بقية تعديلاته كما هي. متابعة؟`)));
+        if (!r) { go.disabled = false; go.textContent = '☁ انشر الآن'; st.textContent = 'أُلغي النشر.'; return; }
+        st.innerHTML = `✓ نُشر. يظهر لكل الزوار خلال دقيقة أو دقيقتين. <a href="${esc(r.url)}" target="_blank" rel="noopener" style="color:var(--navy)">التفاصيل ↗</a>`;
+        go.textContent = 'تم'; setStatus('نُشرت التعديلات ✓');
+        drawTree(); drawForm(); drawPreview();
+      } catch (e) {
+        go.disabled = false; go.textContent = '☁ انشر الآن'; st.style.color = 'var(--red)'; st.textContent = e.message;
+        if (e.status === 401) { try { localStorage.removeItem(GH_KEY); } catch (err) {} }
+      }
+    };
+  });
 }
 
 /* ---------- open / close ---------- */
@@ -498,11 +801,23 @@ window.TEditor = {
     if (!root) { build(); $('.ed-tree', root).addEventListener('click', treeClick); }
     demo = !!isDemo;
     const d = T.readDraft();
-    D = d ? JSON.parse(JSON.stringify(d.data)) : T.published();
+    const pub = T.published();
+    D = d ? JSON.parse(JSON.stringify(d.data)) : pub;
     D.labs = D.labs || []; D.site = D.site || {}; D.aliases = D.aliases || {};
+    // bring in what other editors published since this draft started
+    if (!d) writeBase(pub);
+    else {
+      const base = readBase();
+      if (base && !same(base, pub)) {
+        const conf = []; D = merge3(base, D, pub, conf, '');
+        writeBase(pub); T.saveDraft(D);
+        setTimeout(() => toast(conf.length ? 'دُمجت تعديلات محررين آخرين، مع تعارض في: ' + conflictNames(conf, D).join('، ') : 'دُمجت آخر تعديلات المحررين الآخرين مع مسودتك'), 300);
+      } else if (!base) writeBase(pub);
+    }
     T.useData(D);
     await T.loadFiles();
     $('.ed-demo', root).classList.toggle('hide', !demo);
+    $('[data-act=publish]', root).classList.toggle('hide', demo);
     root.classList.remove('hide'); open = true;
     document.body.style.overflow = 'hidden';
     document.title = (demo ? 'جرّب المحرّر' : 'المحرّر') + ' — تكامل';
@@ -514,6 +829,6 @@ window.TEditor = {
     drawTree();
     if (T.Chat) T.Chat.close();
   },
-  close() { if (!root) return; root.classList.add('hide'); open = false; document.body.style.overflow = ''; },
+  close() { if (!root) return; root.classList.add('hide'); open = false; document.body.style.overflow = ''; $('.ed-prev', root).innerHTML = ''; },
 };
 })();
